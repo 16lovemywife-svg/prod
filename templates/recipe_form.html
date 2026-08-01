@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if is_edit %}Редактирование{% else %}Добавление{% endif %} рецепта
+{% endblock %}
+
+{% block content %}
+<h1 style="color: var(--neon-orange);">
+    {% if is_edit %}✏️ Редактировать рецепт{% else %}➕ Новый рецепт{% endif %}
+</h1>
+
+<form method="POST" enctype="multipart/form-data">
+    <div class="card mb-4">
+        <div class="card-body">
+            <h3 style="color: var(--neon-blue);">Основная информация</h3>
+
+            <div class="form-group">
+                <label class="form-label">Название рецепта *</label>
+                <input type="text" name="title" class="form-control" 
+                       value="{{ recipe.title if recipe else '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Описание</label>
+                <textarea name="description" class="form-control" 
+                          rows="3">{{ recipe.description if recipe else '' }}</textarea>
+            </div>
+
+            <div class="d-flex gap-3 flex-wrap">
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">Время подготовки (мин)</label>
+                    <input type="number" name="prep_time" class="form-control" 
+                           value="{{ recipe.prep_time if recipe else 0 }}" min="0">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">Время готовки (мин)</label>
+                    <input type="number" name="cook_time" class="form-control" 
+                           value="{{ recipe.cook_time if recipe else 0 }}" min="0">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">Количество порций</label>
+                    <input type="number" name="default_portions" class="form-control" 
+                           value="{{ recipe.default_portions if recipe else 1 }}" min="1">
+                </div>
+            </div>
+
+            <div class="d-flex gap-3 flex-wrap">
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">Сложность</label>
+                    <select name="difficulty" class="form-control">
+                        <option value="easy" {% if recipe and recipe.difficulty == 'easy' %}selected{% endif %}>
+                            😊 Лёгкая
+                        </option>
+                        <option value="medium" {% if recipe and recipe.difficulty == 'medium' %}selected{% endif %}>
+                            😐 Средняя
+                        </option>
+                        <option value="hard" {% if recipe and recipe.difficulty == 'hard' %}selected{% endif %}>
+                            😰 Сложная
+                        </option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:2;">
+                    <label class="form-label">Теги (через запятую)</label>
+                    <input type="text" name="tags" class="form-control" 
+                           value="{{ recipe.tags if recipe else '' }}" 
+                           placeholder="завтрак, ПП, салат">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Фото блюда</label>
+                <input type="file" name="image" class="form-control" accept="image/*">
+                {% if recipe and recipe.image %}
+                <p style="margin-top:0.5rem; color: var(--text-secondary);">
+                    Текущее фото: {{ recipe.image }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Ингредиенты -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 style="color: var(--neon-green); margin:0;">🥑 Ингредиенты</h3>
+                <button type="button" class="btn btn-success btn-sm" onclick="addIngredientRow()">
+                    ➕ Добавить
+                </button>
+            </div>
+            <div id="ingredients-container">
+                {% if recipe and recipe.ingredients %}
+                    {% for ing in recipe.ingredients %}
+                    <div class="ingredient-row d-flex gap-2 align-items-center mb-2">
+                        <select name="ingredient_product[]" class="form-control" style="flex:2;" required>
+                            <option value="">Выберите продукт...</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}" 
+                                    {% if ing.product_id == product.id %}selected{% endif %}>
+                                {{ product.name }} ({{ product.calories }} ккал/100г)
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <input type="number" name="ingredient_quantity[]" class="form-control" 
+                               style="flex:1;" placeholder="Кол-во" step="0.1" min="0" 
+                               value="{{ ing.quantity }}" required>
+                        <select name="ingredient_unit[]" class="form-control" style="flex:0.5;">
+                            <option value="г" {% if ing.unit == 'г' %}selected{% endif %}>г</option>
+                            <option value="мл" {% if ing.unit == 'мл' %}selected{% endif %}>мл</option>
+                            <option value="шт" {% if ing.unit == 'шт' %}selected{% endif %}>шт</option>
+                            <option value="ст.л." {% if ing.unit == 'ст.л.' %}selected{% endif %}>ст.л.</option>
+                            <option value="ч.л." {% if ing.unit == 'ч.л.' %}selected{% endif %}>ч.л.</option>
+                        </select>
+                        <button type="button" class="btn btn-danger btn-sm" 
+                                onclick="this.closest('.ingredient-row').remove()">✕</button>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="ingredient-row d-flex gap-2 align-items-center mb-2">
+                    <select name="ingredient_product[]" class="form-control" style="flex:2;" required>
+                        <option value="">Выберите продукт...</option>
+                        {% for product in products %}
+                        <option value="{{ product.id }}">
+                            {{ product.name }} ({{ product.calories }} ккал/100г)
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <input type="number" name="ingredient_quantity[]" class="form-control" 
+                           style="flex:1;" placeholder="Кол-во" step="0.1" min="0" required>
+                    <select name="ingredient_unit[]" class="form-control" style="flex:0.5;">
+                        <option value="г">г</option>
+                        <option value="мл">мл</option>
+                        <option value="шт">шт</option>
+                        <option value="ст.л.">ст.л.</option>
+                        <option value="ч.л.">ч.л.</option>
+                    </select>
+                    <button type="button" class="btn btn-danger btn-sm" 
+                            onclick="this.closest('.ingredient-row').remove()">✕</button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Шаги приготовления -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 style="color: var(--neon-pink); margin:0;">📝 Шаги приготовления</h3>
+                <button type="button" class="btn btn-success btn-sm" onclick="addStepRow()">
+                    ➕ Добавить шаг
+                </button>
+            </div>
+            <div id="steps-container">
+                {% if recipe and recipe.instructions %}
+                    {% set steps_list = recipe.instructions|tojson if recipe.instructions is string else recipe.instructions %}
+                    {# Заглушка - парсинг делается в роуте #}
+                {% else %}
+                <div class="step-row mb-3 p-3" style="background: var(--bg-secondary); border-radius: var(--radius-md);">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong style="color: var(--neon-blue);">Шаг 1</strong>
+                        <button type="button" class="btn btn-danger btn-sm" 
+                                onclick="this.closest('.step-row').remove(); updateStepNumbers();">✕</button>
+                    </div>
+                    <div class="form-group">
+                        <textarea name="step_text[]" class="form-control" 
+                                  placeholder="Опишите шаг приготовления..." rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Таймер (минуты)</label>
+                        <input type="number" name="step_time[]" class="form-control" 
+                               value="0" min="0" style="width:150px;">
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg btn-block">
+        {% if is_edit %}💾 Сохранить изменения{% else %}✅ Создать рецепт{% endif %}
+    </button>
+</form>
+
+<script>
+// Если форма редактирования и есть инструкции - парсим их
+{% if recipe and recipe.instructions %}
+    try {
+        const steps = JSON.parse('{{ recipe.instructions|safe }}');
+        const container = document.getElementById('steps-container');
+        container.innerHTML = '';
+        steps.forEach((step, i) => {
+            addStepRow(step.instruction, step.timer_minutes || 0);
+        });
+    } catch(e) {
+        console.log('Could not parse steps');
+    }
+{% endif %}
+</script>
+{% endblock %}

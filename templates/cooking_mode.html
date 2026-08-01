@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 Готовка: {{ recipe.title }}</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --text: #ffffff;
+            --neon-green: #39ff14;
+            --neon-orange: #ff6b35;
+            --neon-blue: #00d4ff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            /* Предотвращаем затухание экрана */
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Wake Lock API через атрибут */
+        body[data-wakelock="active"] {
+            /* Стили для активного режима */
+        }
+
+        .cooking-header {
+            background: #1a1a24;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .cooking-title {
+            font-size: 1.3rem;
+            color: var(--neon-orange);
+            text-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
+        }
+
+        .close-btn {
+            background: none;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: var(--text);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+
+        .steps-container {
+            flex: 1;
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .step-slide {
+            min-width: 100vw;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .step-number-large {
+            font-size: 8rem;
+            font-weight: 900;
+            color: rgba(0, 212, 255, 0.1);
+            line-height: 1;
+            margin-bottom: -2rem;
+            user-select: none;
+        }
+
+        .step-instruction {
+            font-size: 2rem;
+            font-weight: 600;
+            max-width: 800px;
+            line-height: 1.4;
+            margin: 1.5rem 0;
+        }
+
+        .timer-box {
+            margin-top: 2rem;
+        }
+
+        .timer-display-large {
+            font-size: 4rem;
+            font-weight: 900;
+            color: var(--neon-green);
+            text-shadow: 0 0 30px rgba(57, 255, 20, 0.6);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .btn-timer {
+            background: var(--neon-orange);
+            color: #000;
+            border: none;
+            padding: 1rem 3rem;
+            font-size: 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            margin-top: 1rem;
+            transition: all 0.3s;
+        }
+
+        .btn-timer:hover {
+            box-shadow: 0 0 40px rgba(255, 107, 53, 0.8);
+        }
+
+        .btn-timer:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .cooking-footer {
+            background: #1a1a24;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 1rem;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: var(--neon-blue);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.6);
+        }
+
+        .step-indicator {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1rem;
+        }
+
+        .step-indicator .current {
+            color: var(--neon-blue);
+            font-weight: 700;
+        }
+
+        /* Адаптив */
+        @media (max-width: 768px) {
+            .step-instruction {
+                font-size: 1.4rem;
+            }
+            .step-number-large {
+                font-size: 5rem;
+            }
+            .timer-display-large {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="cooking-header">
+        <span class="cooking-title">🔥 {{ recipe.title }}</span>
+        <a href="{{ url_for('recipes.view_recipe', recipe_id=recipe.id) }}" class="close-btn">✕ Выйти</a>
+    </div>
+
+    <div class="steps-container" id="stepsContainer">
+        {% if steps %}
+            {% for step in steps %}
+            <div class="step-slide" data-step="{{ loop.index }}">
+                <div class="step-number-large">{{ step.step_number }}</div>
+                <p class="step-instruction">{{ step.instruction }}</p>
+
+                {% if step.timer_minutes and step.timer_minutes > 0 %}
+                <div class="timer-box">
+                    <div class="timer-display-large" id="timerDisplay{{ step.step_number }}">
+                        {{ step.timer_minutes }}:00
+                    </div>
+                    <button class="btn-timer"
+                            id="timerBtn{{ step.step_number }}"
+                            onclick="startTimer({{ step.step_number }}, {{ step.timer_minutes }})">
+                        ▶ Старт
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="step-slide">
+                <p class="step-instruction" style="color: rgba(255,255,255,0.5);">
+                    Нет шагов приготовления
+                </p>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="cooking-footer">
+        <button class="nav-btn" onclick="prevStep()" title="Назад">◀</button>
+        <div class="step-indicator">
+            Шаг <span class="current" id="currentStepDisplay">1</span>
+            из <span id="totalStepsDisplay">{{ steps|length if steps else 1 }}</span>
+        </div>
+        <button class="nav-btn" onclick="nextStep()" title="Вперёд">▶</button>
+    </div>
+
+    <script>
+        // ===== РЕЖИМ ГОТОВКИ - СКРИПТ =====
+        const stepsContainer = document.getElementById('stepsContainer');
+        const totalSteps = {{ steps|length if steps else 1 }};
+        let currentStep = 1;
+        const timers = {};
+
+        // Обновляем отображение
+        document.getElementById('totalStepsDisplay').textContent = totalSteps;
+
+        function updateStepDisplay() {
+            document.getElementById('currentStepDisplay').textContent = currentStep;
+
+            // Скроллим к нужному шагу
+            const slideWidth = stepsContainer.children[0]?.offsetWidth || window.innerWidth;
+            stepsContainer.scrollTo({
+                left: (currentStep - 1) * slideWidth,
+                behavior: 'smooth'
+            });
+        }
+
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateStepDisplay();
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStepDisplay();
+            }
+        }
+
+        // Свайпы для мобильных
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        stepsContainer.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        stepsContainer.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) {
+                    nextStep();
+                } else {
+                    prevStep();
+                }
+            }
+        });
+
+        // Клавиатура
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') nextStep();
+            if (e.key === 'ArrowLeft') prevStep();
+        });
+
+        // Таймер
+        function startTimer(stepNumber, minutes) {
+            const displayEl = document.getElementById('timerDisplay' + stepNumber);
+            const btnEl = document.getElementById('timerBtn' + stepNumber);
+
+            if (!displayEl || !btnEl) return;
+
+            // Останавливаем предыдущий таймер если есть
+            if (timers[stepNumber]) {
+                clearInterval(timers[stepNumber]);
+            }
+
+            let totalSeconds = minutes * 60;
+            btnEl.disabled = true;
+            btnEl.textContent = '⏳ Готовим...';
+
+            timers[stepNumber] = setInterval(() => {
+                if (totalSeconds <= 0) {
+                    clearInterval(timers[stepNumber]);
+                    displayEl.textContent = '✅ ГОТОВО!';
+                    displayEl.style.color = '#39ff14';
+                    btnEl.textContent = '▶ Старт';
+                    btnEl.disabled = false;
+
+                    // Вибрация
+                    if (navigator.vibrate) {
+                        navigator.vibrate([300, 200, 300, 200, 500]);
+                    }
+
+                    // Звуковой сигнал (Web Audio API)
+                    playBeep();
+
+                    delete timers[stepNumber];
+                    return;
+                }
+
+                const mins = Math.floor(totalSeconds / 60);
+                const secs = totalSeconds % 60;
+                displayEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+                // Цвет меняется когда осталось меньше минуты
+                if (totalSeconds <= 60) {
+                    displayEl.style.color = '#ff6b35';
+                }
+
+                totalSeconds--;
+            }, 1000);
+        }
+
+        function playBeep() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.frequency.value = 800;
+                oscillator.type = 'square';
+                gainNode.gain.value = 0.3;
+
+                oscillator.start();
+                setTimeout(() => {
+                    oscillator.stop();
+                    audioCtx.close();
+                }, 500);
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
+
+        // Предотвращаем затухание экрана (Wake Lock API)
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    const wakeLock = await navigator.wakeLock.request('screen');
+                    document.body.dataset.wakelock = 'active';
+                    console.log('Wake Lock активен');
+
+                    // Перезапрашиваем при потере фокуса
+                    document.addEventListener('visibilitychange', async () => {
+                        if (document.visibilityState === 'visible') {
+                            await navigator.wakeLock.request('screen');
+                        }
+                    });
+                }
+            } catch (err) {
+                console.log('Wake Lock не поддерживается:', err);
+            }
+        }
+
+        // Запускаем при загрузке
+        requestWakeLock();
+        updateStepDisplay();
+    </script>
+</body>
+</html>

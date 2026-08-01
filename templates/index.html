@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+<!-- Hero блок -->
+<div class="hero">
+    <h1>Найди идеальный рецепт</h1>
+    <p>Храните рецепты, рассчитывайте КБЖУ, планируйте меню — всё в одном приложении</p>
+
+    <!-- Поиск -->
+    <form action="{{ url_for('main.index') }}" method="GET" class="search-box">
+        <input type="text" name="q" placeholder="Поиск рецептов..." value="{{ query }}">
+        <button type="submit">🔍</button>
+    </form>
+</div>
+
+<!-- Категории -->
+<div class="category-grid">
+    {% for cat in categories %}
+    <a href="{{ url_for('main.index', q=cat.tag) }}" class="category-item">
+        {{ cat.icon }} {{ cat.name }}
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Фильтры -->
+<div class="d-flex gap-2 flex-wrap mb-3 justify-content-center">
+    <a href="{{ url_for('main.index', q=query, sort=sort_by, difficulty='') }}" 
+       class="badge {% if not difficulty_filter %}badge-primary{% else %}badge-{% endif %}">
+        Все
+    </a>
+    <a href="{{ url_for('main.index', q=query, difficulty='easy') }}" 
+       class="badge {% if difficulty_filter == 'easy' %}badge-success{% endif %}">
+        😊 Лёгкие
+    </a>
+    <a href="{{ url_for('main.index', q=query, difficulty='medium') }}" 
+       class="badge {% if difficulty_filter == 'medium' %}badge-warning{% endif %}">
+        😐 Средние
+    </a>
+    <a href="{{ url_for('main.index', q=query, difficulty='hard') }}" 
+       class="badge {% if difficulty_filter == 'hard' %}badge-danger{% endif %}">
+        😰 Сложные
+    </a>
+</div>
+
+<!-- Статистика -->
+<div class="d-flex gap-3 justify-content-center mb-4">
+    <span class="badge badge-primary">📋 {{ stats.total_recipes }} рецептов</span>
+    <span class="badge badge-success">📦 {{ stats.total_products }} продуктов</span>
+</div>
+
+<!-- Сетка рецептов -->
+{% if recipes %}
+<div class="recipe-grid">
+    {% for recipe in recipes %}
+    <a href="{{ url_for('recipes.view_recipe', recipe_id=recipe.id) }}" 
+       style="text-decoration:none; color:inherit;">
+        <div class="card">
+            {% if recipe.image %}
+            <img src="{{ url_for('static', filename=recipe.image) }}" 
+                 alt="{{ recipe.title }}" class="card-img">
+            {% else %}
+            <div class="card-img" style="background: linear-gradient(135deg, var(--neon-orange), var(--neon-pink)); 
+                 display: flex; align-items: center; justify-content: center; font-size: 3rem;">
+                🍽️
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <h3 class="card-title">{{ recipe.title }}</h3>
+                <p class="card-text">
+                    {% if recipe.description %}
+                        {{ recipe.description[:100] }}{% if recipe.description|length > 100 %}...{% endif %}
+                    {% else %}
+                        Нет описания
+                    {% endif %}
+                </p>
+                <div class="d-flex gap-1 flex-wrap">
+                    {% if recipe.total_time %}
+                    <span class="badge badge-primary">⏱ {{ recipe.total_time }} мин</span>
+                    {% endif %}
+                    <span class="badge badge-success">{{ recipe.default_portions }} порц.</span>
+                    <span class="badge badge-warning">
+                        {% if recipe.difficulty == 'easy' %}Лёгкий
+                        {% elif recipe.difficulty == 'medium' %}Средний
+                        {% else %}Сложный{% endif %}
+                    </span>
+                    {% if recipe.rating > 0 %}
+                    <span class="badge" style="background:rgba(255,215,0,0.2); color:#ffd700;">
+                        ⭐ {{ recipe.rating }}
+                    </span>
+                    {% endif %}
+                    {% if recipe.favorites %}
+                    <span>❤️</span>
+                    {% endif %}
+                </div>
+                {% if recipe.tags %}
+                <div class="mt-2">
+                    {% for tag in recipe.tags.split(',') %}
+                        {% if tag.strip() %}
+                        <span class="badge badge-primary" style="font-size:0.7rem;">#{{ tag.strip() }}</span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center mt-4">
+    <p style="font-size: 3rem;">🍳</p>
+    <h2 style="color: var(--text-secondary);">Рецептов пока нет</h2>
+    <p style="color: var(--text-muted);">
+        {% if query %}
+            По запросу "{{ query }}" ничего не найдено
+        {% else %}
+            Добавьте первый рецепт!
+        {% endif %}
+    </p>
+    <a href="{{ url_for('recipes.add_recipe') }}" class="btn btn-primary btn-lg mt-2">
+        ➕ Добавить рецепт
+    </a>
+</div>
+{% endif %}
+{% endblock %}

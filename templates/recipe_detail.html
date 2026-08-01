@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}{{ recipe.title }}{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{{ url_for('main.index') }}" style="color: var(--neon-blue); text-decoration: none;">
+        ← Назад к рецептам
+    </a>
+</div>
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <h1 style="color: var(--neon-orange); font-size: 2rem;">{{ recipe.title }}</h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('recipes.edit_recipe', recipe_id=recipe.id) }}" 
+           class="btn btn-primary btn-sm">✏️ Редактировать</a>
+        <form action="{{ url_for('recipes.delete_recipe', recipe_id=recipe.id) }}" 
+              method="POST" data-confirm="Удалить рецепт «{{ recipe.title }}»?" style="display:inline;">
+            <button type="submit" class="btn btn-danger btn-sm">🗑 Удалить</button>
+        </form>
+    </div>
+</div>
+
+<div class="d-flex gap-3 flex-wrap mb-3">
+    <span class="badge badge-primary">⏱ {{ recipe.total_time }} мин</span>
+    <span class="badge badge-success">👥 {{ recipe.default_portions }} порций</span>
+    <span class="badge badge-warning">
+        {% if recipe.difficulty == 'easy' %}😊 Лёгкий
+        {% elif recipe.difficulty == 'medium' %}😐 Средний
+        {% else %}😰 Сложный{% endif %}
+    </span>
+    {% if recipe.tags %}
+        {% for tag in recipe.tags.split(',') %}
+            {% if tag.strip() %}
+            <span class="badge badge-primary">#{{ tag.strip() }}</span>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+</div>
+
+<!-- Кнопки действий -->
+<div class="d-flex gap-2 flex-wrap mb-4">
+    <button class="btn btn-primary btn-sm favorite-btn {% if recipe.favorites %}active{% endif %}" 
+            data-recipe-id="{{ recipe.id }}">
+        <span class="fav-icon">{% if recipe.favorites %}❤️{% else %}🤍{% endif %}</span>
+        Избранное
+    </button>
+    <a href="{{ url_for('recipes.cooking_mode', recipe_id=recipe.id) }}" 
+       class="btn btn-success btn-sm" target="_blank">
+        🔥 Режим готовки
+    </a>
+</div>
+
+<!-- Блок КБЖУ -->
+<div class="nutrition-block mb-4">
+    <h3 style="color: var(--neon-blue); margin-bottom: 1rem;">📊 Пищевая ценность</h3>
+
+    <!-- Масштабатор порций -->
+    <div class="mb-3">
+        <label style="color: var(--text-secondary);">
+            Порции: <strong id="portion-display">{{ nutrition.portions }}</strong>
+        </label>
+        <input type="range" id="portion-scaler" 
+               data-recipe-id="{{ recipe.id }}"
+               data-original-portions="{{ recipe.default_portions }}"
+               min="1" max="20" value="{{ nutrition.portions }}" 
+               style="width: 100%; accent-color: var(--neon-orange);">
+    </div>
+
+    <div class="nutrition-grid">
+        <div class="nutrition-item" id="nutrition-per-portion">
+            <div class="nutrition-value">{{ nutrition.per_portion.calories }}</div>
+            <div class="nutrition-label">ккал / порция</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:5px;">
+                Б: {{ nutrition.per_portion.proteins }}г · 
+                Ж: {{ nutrition.per_portion.fats }}г · 
+                У: {{ nutrition.per_portion.carbs }}г
+            </div>
+        </div>
+        <div class="nutrition-item" id="nutrition-per-100g">
+            <div class="nutrition-value">{{ nutrition.per_100g.calories }}</div>
+            <div class="nutrition-label">ккал / 100г</div>
+        </div>
+        <div class="nutrition-item">
+            <div class="nutrition-value">{{ nutrition.total.calories }}</div>
+            <div class="nutrition-label">ккал всего</div>
+        </div>
+        <div class="nutrition-item">
+            <div class="nutrition-value">{{ nutrition.total.weight }}г</div>
+            <div class="nutrition-label">общий вес</div>
+        </div>
+    </div>
+</div>
+
+<!-- Ингредиенты -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h3 style="color: var(--neon-green); margin-bottom: 1rem;">🥑 Ингредиенты</h3>
+        <ul style="list-style: none; padding: 0;">
+            {% for ingredient in recipe.ingredients %}
+            <li class="ingredient-row d-flex justify-content-between align-items-center mb-2" 
+                style="padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
+                <span>
+                    <span style="color: var(--neon-blue);">●</span>
+                    {{ ingredient.product.name if ingredient.product else 'Продукт #' + ingredient.product_id|string }}
+                </span>
+                <span class="ingredient-quantity" 
+                      data-original="{{ ingredient.quantity }}" 
+                      style="color: var(--neon-orange); font-weight: 600;">
+                    {{ ingredient.quantity }} {{ ingredient.unit }}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<!-- Пошаговая инструкция -->
+{% if steps %}
+<div class="card mb-4">
+    <div class="card-body">
+        <h3 style="color: var(--neon-pink); margin-bottom: 1rem;">📝 Приготовление</h3>
+        {% for step in steps %}
+        <div class="step-item">
+            <div class="step-number">{{ step.step_number }}</div>
+            <div class="step-content">
+                <p>{{ step.instruction }}</p>
+                {% if step.timer_minutes and step.timer_minutes > 0 %}
+                <div class="d-flex align-items-center gap-2 mt-2">
+                    <span class="step-timer">⏱ {{ step.timer_minutes }} мин</span>
+                    <span class="timer-display" style="color: var(--neon-orange); font-weight: 700;"></span>
+                    <button class="start-timer-btn btn btn-primary btn-sm" 
+                            data-minutes="{{ step.timer_minutes }}">▶ Запустить</button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Рейтинг -->
+<div class="card mb-4">
+    <div class="card-body text-center">
+        <h3 style="color: var(--neon-yellow);">⭐ Оцените рецепт</h3>
+        <div class="stars" data-recipe-id="{{ recipe.id }}">
+            {% for i in range(1, 6) %}
+            <span class="star {% if recipe.rating >= i %}active{% endif %}" 
+                  data-value="{{ i }}">★</span>
+            {% endfor %}
+        </div>
+        <span class="rating-count" style="color: var(--text-secondary);">
+            {% if recipe.rating_count > 0 %}
+                ({{ recipe.rating_count }}) {{ recipe.rating }}
+            {% else %}
+                Пока нет оценок
+            {% endif %}
+        </span>
+    </div>
+</div>
+
+<!-- Похожие рецепты -->
+{% if similar_recipes %}
+<div class="mb-4">
+    <h3 style="color: var(--neon-blue); margin-bottom: 1rem;">🔗 Похожие рецепты</h3>
+    <div class="recipe-grid">
+        {% for similar in similar_recipes %}
+        <a href="{{ url_for('recipes.view_recipe', recipe_id=similar.id) }}" 
+           style="text-decoration:none; color:inherit;">
+            <div class="card">
+                <div class="card-body">
+                    <h4>{{ similar.title }}</h4>
+                    <span class="badge badge-primary">⏱ {{ similar.total_time }} мин</span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
