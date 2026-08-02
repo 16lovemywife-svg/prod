@@ -55,54 +55,54 @@
 <div class="recipe-grid">
     {% for recipe in recipes %}
     <a href="{{ url_for('recipes.view_recipe', recipe_id=recipe.id) }}" 
-       style="text-decoration:none; color:inherit;">
+       class="recipe-card-link">
         <div class="card">
             {% if recipe.image %}
-            <img src="{{ url_for('static', filename=recipe.image) }}" 
+            <img src="{{ url_for('static', filename=recipe.image) }}"
                  alt="{{ recipe.title }}" class="card-img">
             {% else %}
-            <div class="card-img" style="background: linear-gradient(135deg, var(--neon-orange), var(--neon-pink)); 
-                 display: flex; align-items: center; justify-content: center; font-size: 3rem;">
+            <div class="card-img-placeholder">
                 🍽️
             </div>
             {% endif %}
+
             <div class="card-body">
-                <h3 class="card-title">{{ recipe.title }}</h3>
+                <h3 class="card-title" title="{{ recipe.title }}">{{ recipe.title }}</h3>
+
                 <p class="card-text">
                     {% if recipe.description %}
-                        {{ recipe.description[:100] }}{% if recipe.description|length > 100 %}...{% endif %}
+                        {{ recipe.description[:80] }}{% if recipe.description|length > 80 %}...{% endif %}
                     {% else %}
                         Нет описания
                     {% endif %}
                 </p>
-                <div class="d-flex gap-1 flex-wrap">
-                    {% if recipe.total_time %}
-                    <span class="badge badge-primary">⏱ {{ recipe.total_time }} мин</span>
-                    {% endif %}
-                    <span class="badge badge-success">{{ recipe.default_portions }} порц.</span>
-                    <span class="badge badge-warning">
-                        {% if recipe.difficulty == 'easy' %}Лёгкий
-                        {% elif recipe.difficulty == 'medium' %}Средний
-                        {% else %}Сложный{% endif %}
-                    </span>
-                    {% if recipe.rating > 0 %}
-                    <span class="badge" style="background:rgba(255,215,0,0.2); color:#ffd700;">
-                        ⭐ {{ recipe.rating }}
-                    </span>
-                    {% endif %}
-                    {% if recipe.favorites %}
-                    <span>❤️</span>
-                    {% endif %}
-                </div>
-                {% if recipe.tags %}
-                <div class="mt-2">
-                    {% for tag in recipe.tags.split(',') %}
-                        {% if tag.strip() %}
-                        <span class="badge badge-primary" style="font-size:0.7rem;">#{{ tag.strip() }}</span>
+
+                <div class="card-tags">
+                    <div class="d-flex gap-1 flex-wrap">
+                        {% if recipe.total_time %}
+                        <span class="badge badge-primary">⏱ {{ recipe.total_time }} мин</span>
                         {% endif %}
-                    {% endfor %}
+                        <span class="badge badge-success">{{ recipe.default_portions }} порц.</span>
+                        <span class="badge badge-warning">
+                            {% if recipe.difficulty == 'easy' %}😊 Лёгкий
+                            {% elif recipe.difficulty == 'medium' %}😐 Средний
+                            {% else %}😰 Сложный{% endif %}
+                        </span>
+                        {% if recipe.favorites %}
+                        <span style="font-size:1.1rem;">❤️</span>
+                        {% endif %}
+                    </div>
+
+                    {% if recipe.tags %}
+                    <div class="mt-1">
+                        {% for tag in recipe.tags.split(',')[:3] %}
+                            {% if tag.strip() %}
+                            <span class="badge badge-primary" style="font-size:0.7rem;">#{{ tag.strip() }}</span>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
         </div>
     </a>
