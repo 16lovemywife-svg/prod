@@ -99,36 +99,33 @@
         <h3 style="color: #ffd700; margin-bottom: 1.5rem;">💰 Стоимость блюда</h3>
 
         <!-- Основные показатели -->
-        <div class="nutrition-grid">
-            <div class="nutrition-item" style="border: 2px solid rgba(255, 107, 53, 0.4); background: rgba(255, 107, 53, 0.05);">
-                <div class="nutrition-label" style="color: var(--neon-orange); font-size: 0.8rem; margin-bottom: 0.3rem;">
-                    🛒 В МАГАЗИНЕ
-                </div>
-                <div class="nutrition-value" style="color: #ff6b35;">
-                    {{ "%.2f"|format(nutrition.full_cost) }} ₽
-                </div>
-                <div class="nutrition-label">полная стоимость</div>
+        <div class="price-grid">
+            <!-- 1. В магазине -->
+            <div class="price-card price-card-full">
+                <div class="price-card__badge">🛒 В МАГАЗИНЕ</div>
+                <div class="price-card__value">{{ "%.2f"|format(nutrition.full_cost) }} ₽</div>
+                <div class="price-card__label">полная стоимость</div>
             </div>
-            <div class="nutrition-item" style="border: 2px solid rgba(255, 215, 0, 0.4); background: rgba(255, 215, 0, 0.05);">
-                <div class="nutrition-label" style="color: #ffd700; font-size: 0.8rem; margin-bottom: 0.3rem;">
-                    📊 ФАКТИЧЕСКИ
-                </div>
-                <div class="nutrition-value" style="color: #ffd700;">
-                    {{ "%.2f"|format(nutrition.actual_cost) }} ₽
-                </div>
-                <div class="nutrition-label">стоимость продуктов</div>
+
+            <!-- 2. Фактически -->
+            <div class="price-card price-card-actual">
+                <div class="price-card__badge">📊 ФАКТИЧЕСКИ</div>
+                <div class="price-card__value">{{ "%.2f"|format(nutrition.actual_cost) }} ₽</div>
+                <div class="price-card__label">стоимость продуктов</div>
             </div>
-            <div class="nutrition-item">
-                <div class="nutrition-value" style="color: #ffd700;">
-                    {{ "%.2f"|format(nutrition.per_portion.actual_cost) }} ₽
-                </div>
-                <div class="nutrition-label">за порцию</div>
+
+            <!-- 3. За порцию -->
+            <div class="price-card">
+                <div class="price-card__badge" style="visibility: hidden;">-</div>
+                <div class="price-card__value">{{ "%.2f"|format(nutrition.per_portion.actual_cost) }} ₽</div>
+                <div class="price-card__label">за порцию</div>
             </div>
-            <div class="nutrition-item">
-                <div class="nutrition-value" style="color: #ffd700;">
-                    {{ "%.2f"|format(nutrition.per_100g.actual_cost) }} ₽
-                </div>
-                <div class="nutrition-label">за 100 г</div>
+
+            <!-- 4. За 100 г -->
+            <div class="price-card">
+                <div class="price-card__badge" style="visibility: hidden;">-</div>
+                <div class="price-card__value">{{ "%.2f"|format(nutrition.per_100g.actual_cost) }} ₽</div>
+                <div class="price-card__label">за 100 г</div>
             </div>
         </div>
 
@@ -230,7 +227,7 @@
 {% endif %}
 
 <!-- Ингредиенты -->
-<div class="card mb-4">
+<div class ="card mb-4">
     <div class="card-body">
         <h3 style="color: var(--neon-green); margin-bottom: 1rem;">🥑 Ингредиенты</h3>
         <ul style="list-style: none; padding: 0;">

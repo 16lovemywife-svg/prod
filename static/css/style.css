@@ -625,3 +625,89 @@ tr:hover {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+/* ===== СЕТКА ЦЕН ===== */
+.price-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+
+.price-card {
+    background: var(--bg-secondary);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: var(--radius-md);
+    padding: 1.2rem 1rem;
+    text-align: center;
+
+    /* ВОТ ЭТО КЛЮЧЕВОЕ СВОЙСТВО */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    transition: all 0.3s ease;
+}
+
+.price-card:hover {
+    border-color: rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+}
+
+.price-card-full {
+    border-color: rgba(255, 107, 53, 0.4);
+    background: rgba(255, 107, 53, 0.05);
+}
+
+.price-card-actual {
+    border-color: rgba(255, 215, 0, 0.4);
+    background: rgba(255, 215, 0, 0.05);
+}
+
+.price-card__badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+    min-height: 16px;  /* Фиксированная высота для выравнивания */
+    display: flex;
+    align-items: center;
+}
+
+.price-card-full .price-card__badge {
+    color: #ff6b35;
+}
+
+.price-card-actual .price-card__badge {
+    color: #ffd700;
+}
+
+.price-card__value {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: #ffd700;
+    line-height: 1.2;
+    margin: 0.2rem 0;
+}
+
+.price-card-full .price-card__value {
+    color: #ff6b35;
+}
+
+.price-card__label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+    min-height: 16px;  /* Фиксированная высота */
+}
+
+/* Адаптив */
+@media (max-width: 600px) {
+    .price-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .price-card__value {
+        font-size: 1.4rem;
+    }
+}
