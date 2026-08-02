@@ -105,7 +105,7 @@ def add_recipe():
 
 @recipes_bp.route('/<int:recipe_id>')
 def view_recipe(recipe_id):
-    """Просмотр рецепта с расчётом КБЖУ"""
+    """Просмотр рецепта с расчётом КБЖУ и стоимости"""
     recipe = Recipe.query.get_or_404(recipe_id)
     nutrition = calculate_recipe_nutrition(recipe)
 
@@ -114,11 +114,10 @@ def view_recipe(recipe_id):
     if recipe.instructions:
         try:
             steps = json.loads(recipe.instructions)
-        except json.JSONDecodeError:
-            steps = [{'step_number': 1, 'instruction': recipe.instructions,
-                      'timer_minutes': 0}]
+        except (json.JSONDecodeError, TypeError):
+            steps = [{'step_number': 1, 'instruction': recipe.instructions, 'timer_minutes': 0}]
 
-    # Похожие рецепты (по тегам)
+    # Похожие рецепты
     similar_recipes = []
     if recipe.tags:
         tags = [t.strip() for t in recipe.tags.split(',') if t.strip()]
