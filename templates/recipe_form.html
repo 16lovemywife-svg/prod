@@ -142,59 +142,79 @@
         </div>
     </div>
 
-    <!-- Шаги приготовления -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3 style="color: var(--neon-pink); margin:0;">📝 Шаги приготовления</h3>
-                <button type="button" class="btn btn-success btn-sm" onclick="addStepRow()">
-                    ➕ Добавить шаг
-                </button>
-            </div>
-            <div id="steps-container">
-                {% if recipe and recipe.instructions %}
-                    {% set steps_list = recipe.instructions|tojson if recipe.instructions is string else recipe.instructions %}
-                    {# Заглушка - парсинг делается в роуте #}
-                {% else %}
+   <!-- Шаги приготовления -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 style="color: var(--neon-pink); margin:0;">📝 Шаги приготовления</h3>
+            <button type="button" class="btn btn-success btn-sm" onclick="addStepRow()">
+                ➕ Добавить шаг
+            </button>
+        </div>
+        <div id="steps-container">
+            {% if is_edit and existing_steps %}
+                {% for step in existing_steps %}
                 <div class="step-row mb-3 p-3" style="background: var(--bg-secondary); border-radius: var(--radius-md);">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <strong style="color: var(--neon-blue);">Шаг 1</strong>
-                        <button type="button" class="btn btn-danger btn-sm" 
+                        <strong style="color: var(--neon-blue);">Шаг {{ step.step_number }}</strong>
+                        <button type="button" class="btn btn-danger btn-sm"
                                 onclick="this.closest('.step-row').remove(); updateStepNumbers();">✕</button>
                     </div>
                     <div class="form-group">
-                        <textarea name="step_text[]" class="form-control" 
-                                  placeholder="Опишите шаг приготовления..." rows="2"></textarea>
+                        <textarea name="step_text[]" class="form-control"
+                                  placeholder="Опишите шаг приготовления..." rows="3">{{ step.instruction }}</textarea>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Таймер (минуты)</label>
-                        <input type="number" name="step_time[]" class="form-control" 
+                        <label class="form-label">⏱ Таймер (минуты, 0 = без таймера)</label>
+                        <input type="number" name="step_time[]" class="form-control"
+                               value="{{ step.timer_minutes }}" min="0" style="width:150px;">
+                    </div>
+                </div>
+                {% endfor %}
+            {% elif is_edit %}
+                <!-- Редактирование, но шагов нет — показываем один пустой -->
+                <div class="step-row mb-3 p-3" style="background: var(--bg-secondary); border-radius: var(--radius-md);">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong style="color: var(--neon-blue);">Шаг 1</strong>
+                        <button type="button" class="btn btn-danger btn-sm"
+                                onclick="this.closest('.step-row').remove(); updateStepNumbers();">✕</button>
+                    </div>
+                    <div class="form-group">
+                        <textarea name="step_text[]" class="form-control"
+                                  placeholder="Опишите шаг приготовления..." rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">⏱ Таймер (минуты)</label>
+                        <input type="number" name="step_time[]" class="form-control"
                                value="0" min="0" style="width:150px;">
                     </div>
                 </div>
-                {% endif %}
-            </div>
+            {% else %}
+                <!-- Новый рецепт — один пустой шаг -->
+                <div class="step-row mb-3 p-3" style="background: var(--bg-secondary); border-radius: var(--radius-md);">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong style="color: var(--neon-blue);">Шаг 1</strong>
+                        <button type="button" class="btn btn-danger btn-sm"
+                                onclick="this.closest('.step-row').remove(); updateStepNumbers();">✕</button>
+                    </div>
+                    <div class="form-group">
+                        <textarea name="step_text[]" class="form-control"
+                                  placeholder="Опишите шаг приготовления..." rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">⏱ Таймер (минуты)</label>
+                        <input type="number" name="step_time[]" class="form-control"
+                               value="0" min="0" style="width:150px;">
+                    </div>
+                </div>
+            {% endif %}
         </div>
     </div>
+</div>
 
     <button type="submit" class="btn btn-primary btn-lg btn-block">
         {% if is_edit %}💾 Сохранить изменения{% else %}✅ Создать рецепт{% endif %}
     </button>
 </form>
 
-<script>
-// Если форма редактирования и есть инструкции - парсим их
-{% if recipe and recipe.instructions %}
-    try {
-        const steps = JSON.parse('{{ recipe.instructions|safe }}');
-        const container = document.getElementById('steps-container');
-        container.innerHTML = '';
-        steps.forEach((step, i) => {
-            addStepRow(step.instruction, step.timer_minutes || 0);
-        });
-    } catch(e) {
-        console.log('Could not parse steps');
-    }
-{% endif %}
-</script>
 {% endblock %}

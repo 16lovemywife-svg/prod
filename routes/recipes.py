@@ -152,29 +152,36 @@ def edit_recipe(recipe_id):
         recipe.difficulty = request.form.get('difficulty', 'easy')
         recipe.tags = request.form.get('tags', '')
 
-        # Обновляем фото если загружено новое
         image_file = request.files.get('image')
         if image_file and image_file.filename:
             recipe.image = save_uploaded_file(image_file)
 
-        # Обновляем инструкции
+        # Собираем шаги из формы
         steps = []
         step_texts = request.form.getlist('step_text[]')
         step_times = request.form.getlist('step_time[]')
+
         for i, text in enumerate(step_texts):
-            if text.strip():
-                step = {
+            text = text.strip()
+            if text:  # Только непустые шаги
+                timer = 0
+                if i < len(step_times) and step_times[i]:
+                    try:
+                        timer = int(step_times[i])
+                    except ValueError:
+                        timer = 0
+                steps.append({
                     'step_number': i + 1,
-                    'instruction': text.strip(),
-                    'timer_minutes': int(step_times[i]) if i < len(
-                        step_times) and step_times[i] else 0
-                }
-                steps.append(step)
-        recipe.instructions = json.dumps(steps, ensure_ascii=False)
+                    'instruction': text,
+                    'timer_minutes': timer
+                })
 
-        # Удаляем старые ингредиенты и добавляем новые
+        # ВАЖНО: обновляем инструкции ТОЛЬКО если шаги не пустые
+        if steps:
+            recipe.instructions = json.dumps(steps, ensure_ascii=False)
+
+        # Обновляем ингредиенты
         RecipeIngredient.query.filter_by(recipe_id=recipe.id).delete()
-
         product_ids = request.form.getlist('ingredient_product[]')
         quantities = request.form.getlist('ingredient_quantity[]')
         units = request.form.getlist('ingredient_unit[]')
@@ -192,12 +199,22 @@ def edit_recipe(recipe_id):
         flash('Рецепт обновлён!', 'success')
         return redirect(url_for('recipes.view_recipe', recipe_id=recipe.id))
 
-    # GET - показываем форму с данными
+    # GET — готовим данные для формы
     products = Product.query.order_by(Product.name).all()
+
+    # Парсим существующие шаги из JSON
+    existing_steps = []
+    if recipe.instructions:
+        try:
+            existing_steps = json.loads(recipe.instructions)
+        except (json.JSONDecodeError, TypeError):
+            existing_steps = []
+
     return render_template('recipe_form.html',
                            recipe=recipe,
                            products=products,
-                           is_edit=True)
+                           is_edit=True,
+                           existing_steps=existing_steps)
 
 
 @recipes_bp.route('/<int:recipe_id>/delete', methods=['POST'])

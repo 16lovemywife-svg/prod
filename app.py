@@ -44,4 +44,4 @@ if __name__ == '__main__':
     print("  RecipeCalc - приложение для расчёта КБЖУ рецептов")
     print("  Откройте в браузере: http://127.0.0.1:5000")
     print("=" * 60)
-    application.run(debug=True, host='127.0.0.1', port=5000)
+    application.run(debug=True, host='0.0.0.0', port=5000)
