@@ -10,6 +10,7 @@ def index():
     """Главная страница с поиском, фильтрами и пагинацией"""
     search_query = request.args.get('q', '')
     difficulty_filter = request.args.get('difficulty', '')
+    favorites_filter = request.args.get('favorites', '0')
     sort_by = request.args.get('sort', 'newest')
     page = request.args.get('page', 1, type=int)
     per_page = 12  # рецептов на странице
@@ -30,6 +31,10 @@ def index():
     # Фильтр по сложности
     if difficulty_filter:
         query = query.filter(Recipe.difficulty == difficulty_filter)
+
+        # Фильтр по избранному ← добавить
+    if favorites_filter == '1':
+        query = query.filter(Recipe.favorites == True)
 
     # Сортировка
     if sort_by == 'quick':
@@ -68,6 +73,7 @@ def index():
         categories=categories,
         stats=stats,
         difficulty_filter=difficulty_filter,
+        favorites_filter=favorites_filter,
         sort_by=sort_by,
         pagination=pagination
     )
