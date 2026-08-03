@@ -27,18 +27,18 @@
 <!-- Фильтры -->
 <div class="d-flex gap-2 flex-wrap mb-3 justify-content-center">
     <a href="{{ url_for('main.index', q=query, sort=sort_by, difficulty='') }}" 
-       class="badge {% if not difficulty_filter %}badge-primary{% else %}badge-{% endif %}">
+       class="badge {% if not difficulty_filter %}badge-primary{% endif %}">
         Все
     </a>
-    <a href="{{ url_for('main.index', q=query, difficulty='easy') }}" 
+    <a href="{{ url_for('main.index', q=query, difficulty='easy') }}"
        class="badge {% if difficulty_filter == 'easy' %}badge-success{% endif %}">
         😊 Лёгкие
     </a>
-    <a href="{{ url_for('main.index', q=query, difficulty='medium') }}" 
+    <a href="{{ url_for('main.index', q=query, difficulty='medium') }}"
        class="badge {% if difficulty_filter == 'medium' %}badge-warning{% endif %}">
         😐 Средние
     </a>
-    <a href="{{ url_for('main.index', q=query, difficulty='hard') }}" 
+    <a href="{{ url_for('main.index', q=query, difficulty='hard') }}"
        class="badge {% if difficulty_filter == 'hard' %}badge-danger{% endif %}">
         😰 Сложные
     </a>
@@ -54,7 +54,7 @@
 {% if recipes %}
 <div class="recipe-grid">
     {% for recipe in recipes %}
-    <a href="{{ url_for('recipes.view_recipe', recipe_id=recipe.id) }}" 
+    <a href="{{ url_for('recipes.view_recipe', recipe_id=recipe.id) }}"
        class="recipe-card-link">
         <div class="card">
             {% if recipe.image %}
@@ -66,7 +66,7 @@
             </div>
             {% endif %}
 
-            <!-- ❤️ Значок избранного -->
+            <!-- Значок избранного -->
             {% if recipe.favorites %}
             <span class="favorite-badge" title="В избранном">❤️</span>
             {% endif %}
@@ -95,21 +95,63 @@
                         </span>
                     </div>
 
-                    {% if recipe.tags %}
                     <div class="mt-1">
-                        {% for tag in recipe.tags.split(',')[:3] %}
-                            {% if tag.strip() %}
-                            <span class="badge badge-primary" style="font-size:0.7rem;">#{{ tag.strip() }}</span>
-                            {% endif %}
-                        {% endfor %}
+                        {% if recipe.tags %}
+                            {% for tag in recipe.tags.split(',')[:3] %}
+                                {% if tag.strip() %}
+                                <span class="badge badge-primary" style="font-size:0.7rem;">#{{ tag.strip() }}</span>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
     </a>
     {% endfor %}
 </div>
+
+<!-- Пагинация -->
+{% if pagination.pages > 1 %}
+<div class="pagination-container">
+    <nav class="pagination">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('main.index', page=pagination.prev_num, q=query, difficulty=difficulty_filter, sort=sort_by) }}"
+           class="pagination__btn pagination__btn--prev" title="Предыдущая">
+            ◀
+        </a>
+        {% else %}
+        <span class="pagination__btn pagination__btn--disabled">◀</span>
+        {% endif %}
+
+        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+                {% if page_num == pagination.page %}
+                <span class="pagination__btn pagination__btn--active">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url_for('main.index', page=page_num, q=query, difficulty=difficulty_filter, sort=sort_by) }}"
+                   class="pagination__btn">{{ page_num }}</a>
+                {% endif %}
+            {% else %}
+                <span class="pagination__btn pagination__btn--dots">…</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if pagination.has_next %}
+        <a href="{{ url_for('main.index', page=pagination.next_num, q=query, difficulty=difficulty_filter, sort=sort_by) }}"
+           class="pagination__btn pagination__btn--next" title="Следующая">
+            ▶
+        </a>
+        {% else %}
+        <span class="pagination__btn pagination__btn--disabled">▶</span>
+        {% endif %}
+    </nav>
+    <div class="pagination-info">
+        Показано {{ (pagination.page - 1) * pagination.per_page + 1 }}–{{ [pagination.page * pagination.per_page, pagination.total] | min }} из {{ pagination.total }} рецептов
+    </div>
+</div>
+{% endif %}
+
 {% else %}
 <div class="text-center mt-4">
     <p style="font-size: 3rem;">🍳</p>
