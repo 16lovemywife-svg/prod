@@ -870,3 +870,524 @@ tr:hover {
     color: var(--text-muted);
     font-size: 0.85rem;
 }
+/* ----- ВЕРХНИЙ БЛОК РЕЦЕПТА ----- */
+.recipe-header {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+}
+
+.recipe-header__image {
+    flex: 0 0 350px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    aspect-ratio: 1/1;
+}
+
+.recipe-header__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.recipe-header__placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    gap: 0.5rem;
+}
+
+.recipe-header__info {
+    flex: 1;
+}
+
+.recipe-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--neon-orange);
+    margin-bottom: 0.5rem;
+}
+
+.recipe-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+}
+
+.recipe-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.8rem 1rem;
+    text-align: center;
+    min-width: 100px;
+}
+
+.stat-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--neon-orange);
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+}
+
+.stat-detail {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 0.3rem;
+}
+
+.recipe-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* ----- ПОЛЗУНОК ПОРЦИЙ ----- */
+.portion-scaler {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--bg-card);
+    padding: 0.8rem 1.2rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+}
+
+.portion-scaler label {
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.form-range {
+    width: 100%;
+    accent-color: var(--neon-orange);
+}
+
+/* ----- ДВЕ КОЛОНКИ: ингредиенты и шаги ----- */
+.recipe-content {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.recipe-ingredients {
+    flex: 1;
+    min-width: 250px;
+    max-width: 350px;
+}
+
+.recipe-steps {
+    flex: 2;
+}
+
+.ingredient-list {
+    list-style: none;
+    padding: 0;
+}
+
+.ingredient-item {
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.6rem 0;
+}
+
+.ingredient-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.ingredient-checkbox:checked + .ingredient-name {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.ingredient-name {
+    flex: 1;
+}
+
+.ingredient-quantity {
+    font-weight: 600;
+    color: var(--neon-orange);
+}
+
+/* ----- ШАГИ ----- */
+.steps-nav {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+}
+
+.step-nav-item {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+.step-nav-item:hover {
+    background: var(--neon-blue);
+    color: var(--bg-primary);
+    border-color: var(--neon-blue);
+}
+
+.step-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+    scroll-margin-top: 80px;
+}
+
+.step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+}
+
+.step-number {
+    width: 36px;
+    height: 36px;
+    background: var(--neon-blue);
+    color: var(--bg-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.step-done-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+}
+
+.step-instruction {
+    line-height: 1.6;
+    margin-bottom: 0.8rem;
+}
+
+.step-timer {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 0.9rem;
+    color: var(--neon-orange);
+}
+
+.timer-display {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ----- МОБИЛЬНАЯ АДАПТАЦИЯ ----- */
+@media (max-width: 768px) {
+    .recipe-header {
+        flex-direction: column;
+    }
+
+    .recipe-header__image {
+        flex: 0 0 auto;
+        width: 100%;
+        aspect-ratio: 16/9;
+    }
+
+    .recipe-content {
+        flex-direction: column;
+    }
+
+    .recipe-ingredients {
+        max-width: 100%;
+    }
+}
+/* ====== ВЕРХНИЙ БЛОК РЕЦЕПТА ====== */
+.recipe-top {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    align-items: flex-start;
+}
+
+.recipe-top__image {
+    flex: 0 0 350px;
+    width: 350px;
+    height: 350px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+}
+
+.recipe-top__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.recipe-top__placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    background: linear-gradient(135deg, var(--neon-orange), var(--neon-pink));
+    color: white;
+}
+
+.recipe-top__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.recipe-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--neon-orange);
+    margin-bottom: 0.5rem;
+}
+
+.recipe-meta-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+}
+
+/* Масштабатор порций */
+.portion-scaler-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+    flex-wrap: wrap;
+}
+
+.portion-label {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.form-range {
+    flex: 1;
+    min-width: 150px;
+    accent-color: var(--neon-orange);
+}
+
+/* Сетка КБЖУ и цены */
+.nutrition-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+}
+
+.nutrition-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.8rem 0.5rem;
+    text-align: center;
+}
+
+.nutrition-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--neon-orange);
+}
+
+.nutrition-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+}
+
+.nutrition-detail {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 0.3rem;
+}
+
+/* Кнопки действий */
+.recipe-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* Выпадающее меню */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-toggle {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    min-width: 160px;
+    z-index: 100;
+    padding: 0.3rem 0;
+    margin-top: 0.3rem;
+}
+
+.dropdown-menu a,
+.dropdown-menu .dropdown-item {
+    display: block;
+    padding: 0.4rem 1rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.dropdown-menu a:hover,
+.dropdown-menu .dropdown-item:hover {
+    background: rgba(0,212,255,0.1);
+    color: var(--neon-blue);
+}
+
+.dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+/* Ингредиенты и шаги */
+.recipe-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.recipe-section h3 {
+    margin-bottom: 1rem;
+    color: var(--neon-green);
+}
+
+.ingredient-list {
+    list-style: none;
+    padding: 0;
+}
+
+.ingredient-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.ingredient-name {
+    color: var(--text-primary);
+}
+
+.ingredient-quantity {
+    font-weight: 600;
+    color: var(--neon-orange);
+}
+
+.step-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    background: var(--neon-blue);
+    color: var(--bg-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.step-content {
+    flex: 1;
+}
+
+.step-timer {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    background: rgba(255,107,53,0.15);
+    color: var(--neon-orange);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+}
+
+.timer-display {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Кнопка outline */
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+.btn-outline:hover {
+    border-color: var(--neon-blue);
+    color: var(--neon-blue);
+}
