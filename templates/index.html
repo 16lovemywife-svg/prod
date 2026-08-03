@@ -66,6 +66,11 @@
             </div>
             {% endif %}
 
+            <!-- ❤️ Значок избранного -->
+            {% if recipe.favorites %}
+            <span class="favorite-badge" title="В избранном">❤️</span>
+            {% endif %}
+
             <div class="card-body">
                 <h3 class="card-title" title="{{ recipe.title }}">{{ recipe.title }}</h3>
 
@@ -88,9 +93,6 @@
                             {% elif recipe.difficulty == 'medium' %}😐 Средний
                             {% else %}😰 Сложный{% endif %}
                         </span>
-                        {% if recipe.favorites %}
-                        <span style="font-size:1.1rem;">❤️</span>
-                        {% endif %}
                     </div>
 
                     {% if recipe.tags %}
