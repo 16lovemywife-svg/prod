@@ -13,6 +13,8 @@ class Product(db.Model):
     category = db.Column(db.String(100), default='')
     image = db.Column(db.String(300), default='')
     default_unit = db.Column(db.String(20), default='г')
+    price = db.Column(db.Float, default=0.0)           # Цена
+    price_unit = db.Column(db.String(20), default='кг') # ← НОВОЕ: за что цена (кг, шт, л, 100г)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -25,7 +27,9 @@ class Product(db.Model):
             'carbs': self.carbs,
             'category': self.category,
             'image': self.image,
-            'default_unit': self.default_unit
+            'default_unit': self.default_unit,
+            'price': self.price,
+            'price_unit': self.price_unit
         }
 
 

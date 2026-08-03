@@ -179,6 +179,35 @@ body {
     width: 100%;
 }
 
+/* ===== ЗНАЧОК ИЗБРАННОГО НА КАРТОЧКЕ ===== */
+.card {
+    position: relative;  /* обязательно для абсолютного позиционирования внутри */
+}
+
+.favorite-badge {
+    position: absolute;
+    top: 0.8rem;         /* отступ сверху как у текста (padding карточки) */
+    left: 0.8rem;        /* отступ слева как у текста */
+    font-size: 1.5rem;
+    line-height: 1;
+    z-index: 10;         /* поверх изображения */
+
+    /* Эффекты для видимости на любом фоне */
+    filter: drop-shadow(0 0 6px rgba(0,0,0,0.7));
+    transition: transform 0.2s ease;
+    cursor: default;
+}
+
+.favorite-badge:hover {
+    transform: scale(1.2);
+}
+
+/* Если изображения нет (placeholder), значок чуть смещаем */
+.card-img-placeholder ~ .favorite-badge {
+    top: 0.8rem;
+    left: 0.8rem;
+}
+
 /* ===== КАРТОЧКИ ===== */
 .card {
     background: var(--bg-card);
@@ -186,6 +215,11 @@ body {
     border-radius: var(--radius-lg);
     overflow: hidden;
     transition: var(--transition);
+
+    /* Делаем карточку flex-контейнером */
+    display: flex;
+    flex-direction: column;
+    height: 100%;  /* Заполняет всю высоту ячейки grid */
 }
 
 .card:hover {
@@ -196,26 +230,87 @@ body {
 
 .card-img {
     width: 100%;
-    height: 200px;
+    height: 180px;  /* Фиксированная высота изображения */
     object-fit: cover;
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;  /* Не сжимается */
+}
+
+/* Заглушка для карточек без фото */
+.card-img-placeholder {
+    width: 100%;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    background: linear-gradient(135deg, var(--neon-orange), var(--neon-pink));
+    flex-shrink: 0;
 }
 
 .card-body {
-    padding: 1.5rem;
+    padding: 1.2rem;
+
+    /* Растягиваем на оставшееся пространство */
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .card-title {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 0.5rem;
+
+    /* Фиксированная высота для 2 строк */
+    line-height: 1.3;
+    max-height: 2.9rem;  /* 1.3 * 2 строки ≈ 2.6rem + запас */
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .card-text {
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    margin-bottom: 0.8rem;
+
+    /* Описание — максимум 2 строки */
+    line-height: 1.4;
+    max-height: 2.5rem;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+
+    flex: 1;  /* Заполняет пространство, выталкивая теги вниз */
+}
+
+/* Контейнер для тегов (всегда внизу карточки) */
+.card-tags {
+    margin-top: auto;  /* Прижимает теги к низу */
+    padding-top: 0.5rem;
+}
+
+/* ===== СЕТКА РЕЦЕПТОВ ===== */
+.recipe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding: 1.5rem 0;
+
+    /* Все карточки в ряду одинаковой высоты */
+    align-items: stretch;
+}
+
+/* Ссылка-обёртка для карточки */
+.recipe-card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    height: 100%;
 }
 
 /* ===== СЕТКА РЕЦЕПТОВ ===== */
@@ -623,5 +718,91 @@ tr:hover {
 
     .nutrition-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+}
+/* ===== СЕТКА ЦЕН ===== */
+.price-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+
+.price-card {
+    background: var(--bg-secondary);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: var(--radius-md);
+    padding: 1.2rem 1rem;
+    text-align: center;
+
+    /* ВОТ ЭТО КЛЮЧЕВОЕ СВОЙСТВО */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    transition: all 0.3s ease;
+}
+
+.price-card:hover {
+    border-color: rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+}
+
+.price-card-full {
+    border-color: rgba(255, 107, 53, 0.4);
+    background: rgba(255, 107, 53, 0.05);
+}
+
+.price-card-actual {
+    border-color: rgba(255, 215, 0, 0.4);
+    background: rgba(255, 215, 0, 0.05);
+}
+
+.price-card__badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+    min-height: 16px;  /* Фиксированная высота для выравнивания */
+    display: flex;
+    align-items: center;
+}
+
+.price-card-full .price-card__badge {
+    color: #ff6b35;
+}
+
+.price-card-actual .price-card__badge {
+    color: #ffd700;
+}
+
+.price-card__value {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: #ffd700;
+    line-height: 1.2;
+    margin: 0.2rem 0;
+}
+
+.price-card-full .price-card__value {
+    color: #ff6b35;
+}
+
+.price-card__label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+    min-height: 16px;  /* Фиксированная высота */
+}
+
+/* Адаптив */
+@media (max-width: 600px) {
+    .price-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .price-card__value {
+        font-size: 1.4rem;
     }
 }

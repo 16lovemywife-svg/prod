@@ -1,8 +1,9 @@
 import os
+import time
 from flask import (Blueprint, render_template, request, redirect,
                    url_for, flash, current_app)
 from werkzeug.utils import secure_filename
-from models import Product, db
+from models import Product, RecipeIngredient, db
 
 products_bp = Blueprint('products', __name__)
 
@@ -16,12 +17,55 @@ def allowed_file(filename):
 def save_product_image(file):
     """Сохраняет изображение продукта"""
     if file and allowed_file(file.filename):
-        import time
         filename = f"product_{int(time.time())}_{secure_filename(file.filename)}"
         filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         return 'uploads/' + filename
     return ''
+
+
+def get_price_per_100g(product):
+    """Пересчитывает цену к 100г для расчётов в рецептах"""
+    if not product.price or product.price <= 0:
+        return 0.0
+
+    unit = product.price_unit or 'кг'
+    price = product.price
+
+    if unit == 'кг':
+        return price / 10
+    elif unit == 'л':
+        return price / 10
+    elif unit == '100г':
+        return price
+    elif unit == '100мл':
+        return price
+    elif unit == 'шт':
+        return price
+    elif unit == 'уп':
+        return price
+    else:
+        return price / 10
+
+
+def format_price(product):
+    """Форматирует цену для отображения"""
+    if not product.price or product.price <= 0:
+        return "—"
+
+    unit = product.price_unit or 'кг'
+    price = product.price
+
+    units_display = {
+        'кг': f'{price:.2f} ₽/кг',
+        'л': f'{price:.2f} ₽/л',
+        'шт': f'{price:.2f} ₽/шт',
+        '100г': f'{price:.2f} ₽/100г',
+        '100мл': f'{price:.2f} ₽/100мл',
+        'уп': f'{price:.2f} ₽/уп',
+    }
+
+    return units_display.get(unit, f'{price:.2f} ₽/{unit}')
 
 
 @products_bp.route('/')
@@ -49,7 +93,8 @@ def product_list():
                            products=products,
                            query=search_query,
                            categories=sorted(categories),
-                           category_filter=category_filter)
+                           category_filter=category_filter,
+                           format_price=format_price)
 
 
 @products_bp.route('/add', methods=['GET', 'POST'])
@@ -61,7 +106,6 @@ def add_product():
             flash('Название продукта обязательно', 'error')
             return redirect(url_for('products.add_product'))
 
-        # Проверка на дубликат
         existing = Product.query.filter(Product.name.ilike(name)).first()
         if existing:
             flash(f'Продукт "{name}" уже существует', 'error')
@@ -76,14 +120,23 @@ def add_product():
         product.category = request.form.get('category', '')
         product.default_unit = request.form.get('default_unit', 'г')
 
-        # Обработка фото
+        # Цена и единица измерения
+        price_str = request.form.get('price', '0')
+        product.price = float(price_str) if price_str else 0.0
+        product.price_unit = request.form.get('price_unit', 'кг')
+
         image_file = request.files.get('image')
         if image_file:
             product.image = save_product_image(image_file)
 
         db.session.add(product)
         db.session.commit()
-        flash(f'Продукт "{name}" добавлен!', 'success')
+
+        if product.price > 0:
+            flash(f'Продукт "{name}" добавлен! ({format_price(product)})', 'success')
+        else:
+            flash(f'Продукт "{name}" добавлен!', 'success')
+
         return redirect(url_for('products.product_list'))
 
     return render_template('product_form.html', product=None, is_edit=False)
@@ -103,6 +156,11 @@ def edit_product(product_id):
         product.category = request.form.get('category', '')
         product.default_unit = request.form.get('default_unit', 'г')
 
+        # Обновляем цену
+        price_str = request.form.get('price', '0')
+        product.price = float(price_str) if price_str else 0.0
+        product.price_unit = request.form.get('price_unit', 'кг')
+
         image_file = request.files.get('image')
         if image_file and image_file.filename:
             product.image = save_product_image(image_file)
@@ -118,12 +176,11 @@ def edit_product(product_id):
 def delete_product(product_id):
     """Удаление продукта"""
     product = Product.query.get_or_404(product_id)
+
     # Проверяем использование в рецептах
-    from models import RecipeIngredient
     usage_count = RecipeIngredient.query.filter_by(product_id=product_id).count()
     if usage_count > 0:
-        flash(f'Нельзя удалить: продукт используется в {usage_count} рецептах',
-              'error')
+        flash(f'Нельзя удалить: продукт используется в {usage_count} рецептах', 'error')
         return redirect(url_for('products.product_list'))
 
     db.session.delete(product)
