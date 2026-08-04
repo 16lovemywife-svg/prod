@@ -4,6 +4,24 @@
 import math
 
 
+def get_price_per_100g(product):
+    """Пересчитывает цену продукта к 100 г (или 100 мл)"""
+    if not product or not product.price or product.price <= 0:
+        return 0.0
+    unit = product.price_unit or 'кг'
+    price = product.price
+    if unit == 'кг':
+        return round(price / 10, 2)
+    elif unit == 'л':
+        return round(price / 10, 2)
+    elif unit in ('100г', '100мл', 'шт'):
+        return price
+    elif unit == 'уп':
+        return round(price, 2)
+    else:
+        return round(price / 10, 2)
+
+
 def get_price_per_unit(product):
     """
     Возвращает цену за единицу измерения продукта.
@@ -26,67 +44,47 @@ def calculate_ingredient_cost(product, quantity_grams):
     price = product.price
 
     if unit == 'кг':
-        # Цена за 1 кг (1000 г)
         price_per_gram = price / 1000
         actual_cost = price_per_gram * quantity_grams
-
-        # Сколько кг нужно купить (округляем вверх)
-        kg_needed = math.ceil(quantity_grams / 1000 * 10) / 10  # с точностью до 100г
+        kg_needed = math.ceil(quantity_grams / 1000 * 10) / 10
         if kg_needed < 0.1:
-            kg_needed = 0.1  # минимум 100г
+            kg_needed = 0.1
         full_cost = kg_needed * price
-
         return round(actual_cost, 2), round(full_cost, 2), kg_needed, 'кг'
 
     elif unit == 'л':
-        # Цена за 1 литр (1000 мл)
         price_per_ml = price / 1000
-        actual_cost = price_per_ml * quantity_grams  # для жидкостей г ≈ мл
-
-        # Сколько литров нужно купить
+        actual_cost = price_per_ml * quantity_grams
         l_needed = math.ceil(quantity_grams / 1000 * 10) / 10
         if l_needed < 0.1:
             l_needed = 0.1
         full_cost = l_needed * price
-
         return round(actual_cost, 2), round(full_cost, 2), l_needed, 'л'
 
     elif unit == 'шт':
-        # Цена за штуку
-        # quantity_grams для яиц — это количество в граммах
-        # 1 яйцо ≈ 50г, так что переводим в штуки
         pieces_needed = max(1, math.ceil(quantity_grams / 50))
-        actual_cost = price * (quantity_grams / 50)  # пропорционально весу
+        actual_cost = price * (quantity_grams / 50)
         full_cost = price * pieces_needed
-
         return round(actual_cost, 2), round(full_cost, 2), pieces_needed, 'шт'
 
     elif unit == '100г':
-        # Цена за 100 г
         price_per_gram = price / 100
         actual_cost = price_per_gram * quantity_grams
-
-        # Сколько упаковок по 100г нужно
         packs_needed = math.ceil(quantity_grams / 100)
         full_cost = packs_needed * price
-
         return round(actual_cost, 2), round(full_cost, 2), packs_needed, 'уп(100г)'
 
     elif unit == '100мл':
         price_per_ml = price / 100
         actual_cost = price_per_ml * quantity_grams
-
         packs_needed = math.ceil(quantity_grams / 100)
         full_cost = packs_needed * price
-
         return round(actual_cost, 2), round(full_cost, 2), packs_needed, 'уп(100мл)'
 
     elif unit == 'уп':
-        # Цена за упаковку
-        actual_cost = price * (quantity_grams / 100)  # примерный расчёт
+        actual_cost = price * (quantity_grams / 100)
         packs_needed = 1
         full_cost = price
-
         return round(actual_cost, 2), round(full_cost, 2), packs_needed, 'уп'
 
     else:
@@ -102,7 +100,6 @@ def calculate_recipe_nutrition(recipe, portions=None, custom_ingredients=None):
     if portions is None:
         portions = recipe.default_portions or 1
 
-    # Используем кастомные ингредиенты, если они переданы, иначе – оригинальные
     source_ingredients = custom_ingredients if custom_ingredients is not None else recipe.ingredients
 
     total_calories = 0.0
@@ -122,20 +119,21 @@ def calculate_recipe_nutrition(recipe, portions=None, custom_ingredients=None):
             continue
         factor = ingredient.quantity / 100.0
 
-        # КБЖУ
         total_calories += product.calories * factor
         total_proteins += product.proteins * factor
         total_fats += product.fats * factor
         total_carbs += product.carbs * factor
         total_weight += ingredient.quantity
 
-        # Стоимость
         actual_cost, full_cost, buy_amount, buy_unit = calculate_ingredient_cost(product, ingredient.quantity)
         total_actual_cost += actual_cost
         total_full_cost += full_cost
 
+        price_per_100g = get_price_per_100g(product)
+
         if product.price > 0:
             ingredients_detail.append({
+                'product_id': product.id,
                 'name': product.name,
                 'quantity': ingredient.quantity,
                 'unit': ingredient.unit if hasattr(ingredient, 'unit') else 'г',
@@ -144,11 +142,13 @@ def calculate_recipe_nutrition(recipe, portions=None, custom_ingredients=None):
                 'actual_cost': actual_cost,
                 'full_cost': full_cost,
                 'buy_amount': buy_amount,
-                'buy_unit': buy_unit
+                'buy_unit': buy_unit,
+                'price_per_100g': price_per_100g
             })
         else:
             unpriced.append(product.name)
             ingredients_detail.append({
+                'product_id': product.id,
                 'name': product.name,
                 'quantity': ingredient.quantity,
                 'unit': ingredient.unit if hasattr(ingredient, 'unit') else 'г',
@@ -157,10 +157,10 @@ def calculate_recipe_nutrition(recipe, portions=None, custom_ingredients=None):
                 'actual_cost': 0,
                 'full_cost': 0,
                 'buy_amount': 0,
-                'buy_unit': ''
+                'buy_unit': '',
+                'price_per_100g': 0.0
             })
 
-    # Расчёт per_portion и per_100g
     per_portion = {
         'calories': round(total_calories / portions, 1) if portions > 0 else 0,
         'proteins': round(total_proteins / portions, 1) if portions > 0 else 0,
