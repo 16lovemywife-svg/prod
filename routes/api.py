@@ -19,6 +19,7 @@ def calculate_nutrition_api(recipe_id):
 
     # Если переданы обновлённые ингредиенты - создаём временный объект для расчёта
     if 'ingredients' in data:
+        print("Получены ingredients:", data['ingredients']) # временные файлы
         # Создаём временные объекты ингредиентов для расчёта
         temp_ingredients = []
         for ing_data in data['ingredients']:
@@ -35,9 +36,11 @@ def calculate_nutrition_api(recipe_id):
         original_ingredients = recipe.ingredients
         recipe.ingredients = temp_ingredients
         nutrition = calculate_recipe_nutrition(recipe, portions)
+        print("Новые total.calories:", nutrition['total']['calories'])
         recipe.ingredients = original_ingredients
     else:
         nutrition = calculate_recipe_nutrition(recipe, portions)
+        print("Использую исходные ингредиенты")
 
     return jsonify(nutrition)
 

@@ -225,7 +225,6 @@
 </div>
 {% endif %}
 {% endblock %}
-
 {% block extra_js %}
 <script>
 function changePortion(delta) {
@@ -258,79 +257,72 @@ function togglePriceDetails() {
     const ingredientRows = document.querySelectorAll('#ingredients-list .ingredient-row');
 
     slider.addEventListener('input', async function() {
-    const newPortions = parseInt(this.value);
-    if (display) display.textContent = newPortions;
-    const factor = newPortions / originalPortions;
+        const newPortions = parseInt(this.value);
+        if (display) display.textContent = newPortions;
+        const factor = newPortions / originalPortions;
 
-    // Подготавливаем массив для отправки на сервер
-    const ingredientsPayload = [];
+        const ingredientsPayload = [];
 
-    ingredientRows.forEach(row => {
-        const qtyEl = row.querySelector('.ingredient-quantity');
-        if (!qtyEl) return;
+        ingredientRows.forEach(row => {
+            const qtyEl = row.querySelector('.ingredient-quantity');
+            if (!qtyEl) return;
 
-        const originalQty = parseFloat(row.dataset.originalQty);
-        let unit = row.dataset.unit;
-        if (!unit) {
-            const parts = qtyEl.textContent.trim().split(/\s+/);
-            unit = parts.length > 1 ? parts.pop() : '';
-        }
-        const newQty = Math.round(originalQty * factor * 10) / 10;
-        // Обновляем визуально
-        qtyEl.textContent = `${newQty} ${unit}`;
+            const originalQty = parseFloat(row.dataset.originalQty);
+            let unit = row.dataset.unit;
+            if (!unit) {
+                const parts = qtyEl.textContent.trim().split(/\s+/);
+                unit = parts.length > 1 ? parts.pop() : '';
+            }
+            const newQty = Math.round(originalQty * factor * 10) / 10;
+            qtyEl.textContent = `${newQty} ${unit}`;
 
-        // Добавляем в payload, если есть product_id
-        const productId = row.dataset.productId;
-        if (productId) {
-            ingredientsPayload.push({
-                product_id: parseInt(productId),
-                quantity: newQty,
-                unit: unit
+            const productId = row.dataset.productId;
+            if (productId) {
+                ingredientsPayload.push({
+                    product_id: parseInt(productId),
+                    quantity: newQty,
+                    unit: unit
+                });
+            }
+        });
+
+        try {
+            const response = await fetch(`/api/calculate-nutrition/${recipeId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    portions: newPortions,
+                    ingredients: ingredientsPayload
+                })
             });
+            const data = await response.json();
+
+            // Обновляем все блоки
+            document.getElementById('per-100g-cal').textContent = data.per_100g.calories;
+            document.getElementById('per-100g-proteins').textContent = data.per_100g.proteins;
+            document.getElementById('per-100g-fats').textContent = data.per_100g.fats;
+            document.getElementById('per-100g-carbs').textContent = data.per_100g.carbs;
+
+            document.getElementById('per-portion-cal').textContent = data.per_portion.calories;
+            document.getElementById('per-portion-proteins').textContent = data.per_portion.proteins;
+            document.getElementById('per-portion-fats').textContent = data.per_portion.fats;
+            document.getElementById('per-portion-carbs').textContent = data.per_portion.carbs;
+
+            document.getElementById('total-cal').textContent = data.total.calories;
+            document.getElementById('total-weight').textContent = data.total.weight;
+            document.getElementById('total-proteins').textContent = data.total.proteins;
+            document.getElementById('total-fats').textContent = data.total.fats;
+            document.getElementById('total-carbs').textContent = data.total.carbs;
+
+            const priceFullEl = document.getElementById('price-full');
+            const priceActualEl = document.getElementById('price-actual');
+            if (priceFullEl) priceFullEl.textContent = data.full_cost.toFixed(2);
+            if (priceActualEl) priceActualEl.textContent = data.actual_cost.toFixed(2);
+
+        } catch (err) {
+            console.error('Ошибка пересчёта:', err);
         }
     });
-
-    // Запрос к API с обновлёнными ингредиентами
-    try {
-        const response = await fetch(`/api/calculate-nutrition/${recipeId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                portions: newPortions,
-                ingredients: ingredientsPayload  // ← теперь передаём
-            })
-        });
-        const data = await response.json();
-
-        // Обновляем все блоки (на 100 г, на порцию, всего, стоимость)
-        // На 100 г
-        document.getElementById('per-100g-cal').textContent = data.per_100g.calories;
-        document.getElementById('per-100g-proteins').textContent = data.per_100g.proteins;
-        document.getElementById('per-100g-fats').textContent = data.per_100g.fats;
-        document.getElementById('per-100g-carbs').textContent = data.per_100g.carbs;
-
-        // На порцию
-        document.getElementById('per-portion-cal').textContent = data.per_portion.calories;
-        document.getElementById('per-portion-proteins').textContent = data.per_portion.proteins;
-        document.getElementById('per-portion-fats').textContent = data.per_portion.fats;
-        document.getElementById('per-portion-carbs').textContent = data.per_portion.carbs;
-
-        // Всего
-        document.getElementById('total-cal').textContent = data.total.calories;
-        document.getElementById('total-weight').textContent = data.total.weight;
-        document.getElementById('total-proteins').textContent = data.total.proteins;
-        document.getElementById('total-fats').textContent = data.total.fats;
-        document.getElementById('total-carbs').textContent = data.total.carbs;
-
-        // Стоимость
-        const priceFullEl = document.getElementById('price-full');
-        const priceActualEl = document.getElementById('price-actual');
-        if (priceFullEl) priceFullEl.textContent = data.full_cost.toFixed(2);
-        if (priceActualEl) priceActualEl.textContent = data.actual_cost.toFixed(2);
-
-    } catch (err) {
-        console.error('Ошибка пересчёта:', err);
-    }
-});
+})();   // <-- вот здесь закрываем IIFE
 </script>
 {% endblock %}

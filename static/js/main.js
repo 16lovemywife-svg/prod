@@ -13,12 +13,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 4000);
     });
 
-    // Рейтинг звёздами
-    initStarRating();
-
-    // Масштабирование порций
-    initPortionScaler();
-
     // Таймеры в шагах
     initStepTimers();
 
@@ -28,142 +22,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Подтверждение удаления
     initDeleteConfirmation();
 });
-
-// ===== РЕЙТИНГ ЗВЁЗДАМИ =====
-function initStarRating() {
-    const starContainers = document.querySelectorAll('.stars[data-recipe-id]');
-    starContainers.forEach(container => {
-        const stars = container.querySelectorAll('.star');
-        const recipeId = container.dataset.recipeId;
-
-        stars.forEach(star => {
-            star.addEventListener('click', function () {
-                const score = parseInt(this.dataset.value);
-                // Отправляем оценку на сервер
-                fetch(`/recipes/${recipeId}/rate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ score: score })
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'ok') {
-                            // Обновляем отображение звёзд
-                            stars.forEach(s => {
-                                if (parseInt(s.dataset.value) <= score) {
-                                    s.classList.add('active');
-                                } else {
-                                    s.classList.remove('active');
-                                }
-                            });
-                            // Обновляем счётчик
-                            const countEl = container.parentElement.querySelector('.rating-count');
-                            if (countEl) {
-                                countEl.textContent = `(${data.rating_count}) ${data.rating}`;
-                            }
-                        }
-                    })
-                    .catch(err => console.error('Rating error:', err));
-            });
-
-            // Hover эффект
-            star.addEventListener('mouseenter', function () {
-                const value = parseInt(this.dataset.value);
-                stars.forEach(s => {
-                    if (parseInt(s.dataset.value) <= value) {
-                        s.style.color = '#ffd700';
-                    }
-                });
-            });
-
-            star.addEventListener('mouseleave', function () {
-                stars.forEach(s => {
-                    if (!s.classList.contains('active')) {
-                        s.style.color = '';
-                    }
-                });
-            });
-        });
-    });
-}
-
-// ===== МАСШТАБИРОВАНИЕ ПОРЦИЙ =====
-function initPortionScaler() {
-    const scaler = document.getElementById('portion-scaler');
-    if (!scaler) return;
-
-    const recipeId = scaler.dataset.recipeId;
-    const portionDisplay = document.getElementById('portion-display');
-    const ingredientRows = document.querySelectorAll('.ingredient-row');
-
-    // Сохраняем оригинальные количества
-    const originalQuantities = [];
-    ingredientRows.forEach(row => {
-        const qtyEl = row.querySelector('.ingredient-quantity');
-        if (qtyEl) {
-            originalQuantities.push({
-                row: row,
-                originalQty: parseFloat(qtyEl.dataset.original || qtyEl.textContent)
-            });
-        }
-    });
-
-    scaler.addEventListener('input', function () {
-        const newPortions = parseInt(this.value);
-        if (portionDisplay) {
-            portionDisplay.textContent = newPortions;
-        }
-
-        const originalPortions = parseInt(this.dataset.originalPortions || 1);
-        const factor = newPortions / originalPortions;
-
-        // Обновляем количества ингредиентов
-        originalQuantities.forEach(item => {
-            const qtyEl = item.row.querySelector('.ingredient-quantity');
-            if (qtyEl) {
-                const newQty = Math.round(item.originalQty * factor * 10) / 10;
-                qtyEl.textContent = newQty;
-            }
-        });
-
-        // Пересчитываем КБЖУ через API
-        recalculateNutrition(recipeId, newPortions);
-    });
-}
-
-function recalculateNutrition(recipeId, portions) {
-    fetch(`/api/calculate-nutrition/${recipeId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ portions: portions })
-    })
-        .then(response => response.json())
-        .then(data => {
-            // Обновляем блок КБЖУ на странице
-            const perPortionEl = document.getElementById('nutrition-per-portion');
-            const per100gEl = document.getElementById('nutrition-per-100g');
-
-            if (perPortionEl && data.per_portion) {
-                perPortionEl.innerHTML = `
-                    <div class="nutrition-value">${data.per_portion.calories}</div>
-                    <div class="nutrition-label">ккал / порция</div>
-                    <div style="font-size:0.8rem;color:var(--text-muted);margin-top:5px;">
-                        Б: ${data.per_portion.proteins}г ·
-                        Ж: ${data.per_portion.fats}г ·
-                        У: ${data.per_portion.carbs}г
-                    </div>
-                `;
-            }
-
-            if (per100gEl && data.per_100g) {
-                per100gEl.innerHTML = `
-                    <div class="nutrition-value">${data.per_100g.calories}</div>
-                    <div class="nutrition-label">ккал / 100г</div>
-                `;
-            }
-        })
-        .catch(err => console.error('Nutrition recalc error:', err));
-}
 
 // ===== ТАЙМЕРЫ В ШАГАХ =====
 function initStepTimers() {
@@ -199,6 +57,10 @@ function startCountdown(minutes, displayEl, button) {
         const mins = Math.floor(totalSeconds / 60);
         const secs = totalSeconds % 60;
         displayEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        // Когда осталось меньше минуты - меняем цвет
+        if (totalSeconds <= 60) {
+            displayEl.style.color = 'var(--neon-orange)';
+        }
         totalSeconds--;
     }, 1000);
 }
@@ -246,28 +108,11 @@ function initDeleteConfirmation() {
     });
 }
 
-// ===== ПОИСК ПРОДУКТОВ ДЛЯ АВТОДОПОЛНЕНИЯ =====
-function searchProducts(query, callback) {
-    if (query.length < 2) {
-        callback([]);
-        return;
-    }
-
-    fetch(`/api/search-products?q=${encodeURIComponent(query)}`)
-        .then(response => response.json())
-        .then(data => callback(data))
-        .catch(err => {
-            console.error('Search error:', err);
-            callback([]);
-        });
-}
-
 // ===== ДОБАВЛЕНИЕ ИНГРЕДИЕНТА В ФОРМУ РЕЦЕПТА =====
 function addIngredientRow(productId = '', productName = '', quantity = '', unit = 'г') {
     const container = document.getElementById('ingredients-container');
     if (!container) return;
 
-    const index = container.children.length;
     const row = document.createElement('div');
     row.className = 'ingredient-row d-flex gap-2 align-items-center mb-2';
     row.innerHTML = `
