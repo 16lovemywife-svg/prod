@@ -7,7 +7,6 @@
     <a href="{{ url_for('main.index') }}" class="back-link">← Назад к рецептам</a>
 </div>
 
-<!-- ====== ВЕРХНИЙ БЛОК ====== -->
 <div class="recipe-top">
     <div class="recipe-top__image">
         {% if recipe.image %}
@@ -35,7 +34,6 @@
             {% endif %}
         </div>
 
-        <!-- Масштабатор порций -->
         <div class="portion-scaler-row">
             <button class="btn btn-sm btn-outline" onclick="changePortion(-1)">–</button>
             <span class="portion-label">Порции: <strong id="portion-display">{{ nutrition.portions }}</strong></span>
@@ -47,47 +45,54 @@
             <button class="btn btn-sm btn-outline" onclick="changePortion(1)">+</button>
         </div>
 
-        <!-- КБЖУ + стоимость -->
         <div class="nutrition-grid" id="nutrition-block">
-            <div class="nutrition-item" id="nutrition-per-portion">
-                <div class="nutrition-value">{{ nutrition.per_portion.calories }}</div>
-                <div class="nutrition-label">ккал / порция</div>
-                <div class="nutrition-detail">
-                    Б: {{ nutrition.per_portion.proteins }}г ·
-                    Ж: {{ nutrition.per_portion.fats }}г ·
-                    У: {{ nutrition.per_portion.carbs }}г
-                </div>
-            </div>
-            <div class="nutrition-item" id="nutrition-per-100g">
-                <div class="nutrition-value">{{ nutrition.per_100g.calories }}</div>
+            <!-- 1-я колонка: на 100 г -->
+            <div class="nutrition-item">
+                <div class="nutrition-value"><span id="per-100g-cal">{{ nutrition.per_100g.calories }}</span></div>
                 <div class="nutrition-label">ккал / 100г</div>
                 <div class="nutrition-detail">
-                    Б: {{ nutrition.per_100g.proteins }}г ·
-                    Ж: {{ nutrition.per_100g.fats }}г ·
-                    У: {{ nutrition.per_100g.carbs }}г
+                    Б: <span id="per-100g-proteins">{{ nutrition.per_100g.proteins }}</span>г ·
+                    Ж: <span id="per-100g-fats">{{ nutrition.per_100g.fats }}</span>г ·
+                    У: <span id="per-100g-carbs">{{ nutrition.per_100g.carbs }}</span>г
                 </div>
             </div>
-            <div class="nutrition-item" id="nutrition-total">
-                <div class="nutrition-value">{{ nutrition.total.calories }}</div>
-                <div class="nutrition-label">ккал всего</div>
+
+            <!-- 2-я колонка: на порцию -->
+            <div class="nutrition-item">
+                <div class="nutrition-value"><span id="per-portion-cal">{{ nutrition.per_portion.calories }}</span></div>
+                <div class="nutrition-label">ккал / порция</div>
                 <div class="nutrition-detail">
-                    Б: {{ nutrition.total.proteins }}г ·
-                    Ж: {{ nutrition.total.fats }}г ·
-                    У: {{ nutrition.total.carbs }}г
+                    Б: <span id="per-portion-proteins">{{ nutrition.per_portion.proteins }}</span>г ·
+                    Ж: <span id="per-portion-fats">{{ nutrition.per_portion.fats }}</span>г ·
+                    У: <span id="per-portion-carbs">{{ nutrition.per_portion.carbs }}</span>г
                 </div>
             </div>
+
+
+            <!-- 3-я колонка: всего -->
+
+            <div class="nutrition-item">
+                <div class="nutrition-value"><span id="total-cal">{{ nutrition.total.calories }}</span></div>
+                <div class="nutrition-label">ккалорий в <span id="total-weight">{{ nutrition.total.weight }}</span> г</div>
+                <div class="nutrition-detail">
+                    Б: <span id="total-proteins">{{ nutrition.total.proteins }}</span>г ·
+                    Ж: <span id="total-fats">{{ nutrition.total.fats }}</span>г ·
+                    У: <span id="total-carbs">{{ nutrition.total.carbs }}</span>г
+                </div>
+            </div>
+
+            <!-- 4-я колонка: цена (если есть) -->
             {% if nutrition.full_cost > 0 %}
-            <div class="nutrition-item" id="nutrition-price-total">
-                <div class="nutrition-value">{{ "%.2f"|format(nutrition.full_cost) }} ₽</div>
+            <div class="nutrition-item">
+                <div class="nutrition-value"><span id="price-full">{{ "%.2f"|format(nutrition.full_cost) }}</span> ₽</div>
                 <div class="nutrition-label">в магазине</div>
                 <div class="nutrition-detail">
-                    факт: {{ "%.2f"|format(nutrition.actual_cost) }} ₽
+                    факт: <span id="price-actual">{{ "%.2f"|format(nutrition.actual_cost) }}</span> ₽
                 </div>
             </div>
             {% endif %}
         </div>
 
-        <!-- Кнопки действий -->
         <div class="recipe-actions">
             <button class="btn btn-sm favorite-btn {% if recipe.favorites %}active{% endif %}"
                     data-recipe-id="{{ recipe.id }}">
@@ -97,7 +102,6 @@
                class="btn btn-sm btn-success" target="_blank">🔥 Режим готовки</a>
             <button class="btn btn-sm btn-primary" onclick="window.print()">🖨️ Печать</button>
 
-            <!-- Выпадающее меню "Ещё" -->
             <div class="dropdown">
                 <button class="btn btn-sm btn-outline dropdown-toggle">⋮ Ещё</button>
                 <div class="dropdown-menu">
@@ -112,24 +116,21 @@
     </div>
 </div>
 
-<!-- ====== Ингредиенты ====== -->
 <div class="recipe-section mt-4">
     <h3>🥑 Ингредиенты</h3>
-    <ul class="ingredient-list">
+    <ul class="ingredient-list" id="ingredients-list">
         {% for ingredient in recipe.ingredients %}
-        <li class="ingredient-row">
-            <span class="ingredient-name">
-                {{ ingredient.product.name if ingredient.product else '—' }}
-            </span>
-            <span class="ingredient-quantity" data-original="{{ ingredient.quantity }}">
-                {{ ingredient.quantity }} {{ ingredient.unit }}
-            </span>
+        <li class="ingredient-row"
+            data-product-id="{{ ingredient.product.id if ingredient.product else '' }}"
+            data-original-qty="{{ ingredient.quantity }}"
+            data-unit="{{ ingredient.unit }}">
+            <span class="ingredient-name"> {{ ingredient.product.name if ingredient.product else '—' }}</span>
+            <span class="ingredient-quantity"> {{ ingredient.quantity }} {{ ingredient.unit }}</span>
         </li>
         {% endfor %}
     </ul>
 </div>
 
-<!-- ====== Приготовление ====== -->
 <div class="recipe-section mt-4">
     <h3>📝 Приготовление</h3>
     {% if steps %}
@@ -154,7 +155,6 @@
     {% endif %}
 </div>
 
-<!-- ====== Стоимость ====== -->
 {% if nutrition.ingredients_detail and nutrition.priced_count > 0 %}
 <div class="card mt-4" style="border-color: rgba(255, 215, 0, 0.3);">
     <div class="card-body">
@@ -165,22 +165,43 @@
             </button>
         </div>
         <div id="priceDetailsContent" style="display:none;">
-            <!-- таблица как в текущей версии (без изменений) -->
             <div class="mt-3 p-3" style="background: rgba(255,255,255,0.02); border-radius: 8px; border-left: 3px solid #ffd700;">
                 <p style="color: var(--text-secondary); font-size: 0.85rem;">
                     🛒 <strong style="color: #ff6b35;">Полная стоимость</strong> — покупка целых упаковок<br>
                     📊 <strong style="color: #ffd700;">Фактическая стоимость</strong> — только использованное
                 </p>
             </div>
-            <div class="mt-3">
-                <table> ... (ваша существующая таблица детализации) ... </table>
+            <div class="mt-3 table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Ингредиент</th>
+                            <th>Нужно</th>
+                            <th>Купить</th>
+                            <th>Цена</th>
+                            <th>Факт</th>
+                            <th>Полная</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in nutrition.ingredients_detail %}
+                        <tr>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.quantity }} {{ item.unit }}</td>
+                            <td>{% if item.price > 0 %}{{ item.buy_amount }} {{ item.buy_unit }}{% else %}—{% endif %}</td>
+                            <td>{% if item.price > 0 %}{{ item.price }} ₽/{{ item.price_unit }}{% else %}—{% endif %}</td>
+                            <td>{% if item.actual_cost > 0 %}{{ "%.2f"|format(item.actual_cost) }} ₽{% else %}—{% endif %}</td>
+                            <td>{% if item.full_cost > 0 %}{{ "%.2f"|format(item.full_cost) }} ₽{% else %}—{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 {% endif %}
 
-<!-- ====== Похожие рецепты ====== -->
 {% if similar_recipes %}
 <div class="mt-4">
     <h3>🔗 Похожие рецепты</h3>
@@ -207,7 +228,6 @@
 
 {% block extra_js %}
 <script>
-// Функция для кнопок +/- порций
 function changePortion(delta) {
     const slider = document.getElementById('portion-scaler');
     if (!slider) return;
@@ -217,7 +237,6 @@ function changePortion(delta) {
     slider.dispatchEvent(new Event('input'));
 }
 
-// Функция скрытия/показа деталей стоимости
 function togglePriceDetails() {
     const content = document.getElementById('priceDetailsContent');
     const btn = document.getElementById('priceToggleText');
@@ -229,5 +248,88 @@ function togglePriceDetails() {
         btn.textContent = 'Детали ▼';
     }
 }
+
+(function() {
+    const slider = document.getElementById('portion-scaler');
+    if (!slider) return;
+    const recipeId = slider.dataset.recipeId;
+    const originalPortions = parseFloat(slider.dataset.originalPortions) || 1;
+    const display = document.getElementById('portion-display');
+    const ingredientRows = document.querySelectorAll('#ingredients-list .ingredient-row');
+
+    slider.addEventListener('input', async function() {
+    const newPortions = parseInt(this.value);
+    if (display) display.textContent = newPortions;
+    const factor = newPortions / originalPortions;
+
+    // Подготавливаем массив для отправки на сервер
+    const ingredientsPayload = [];
+
+    ingredientRows.forEach(row => {
+        const qtyEl = row.querySelector('.ingredient-quantity');
+        if (!qtyEl) return;
+
+        const originalQty = parseFloat(row.dataset.originalQty);
+        let unit = row.dataset.unit;
+        if (!unit) {
+            const parts = qtyEl.textContent.trim().split(/\s+/);
+            unit = parts.length > 1 ? parts.pop() : '';
+        }
+        const newQty = Math.round(originalQty * factor * 10) / 10;
+        // Обновляем визуально
+        qtyEl.textContent = `${newQty} ${unit}`;
+
+        // Добавляем в payload, если есть product_id
+        const productId = row.dataset.productId;
+        if (productId) {
+            ingredientsPayload.push({
+                product_id: parseInt(productId),
+                quantity: newQty,
+                unit: unit
+            });
+        }
+    });
+
+    // Запрос к API с обновлёнными ингредиентами
+    try {
+        const response = await fetch(`/api/calculate-nutrition/${recipeId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                portions: newPortions,
+                ingredients: ingredientsPayload  // ← теперь передаём
+            })
+        });
+        const data = await response.json();
+
+        // Обновляем все блоки (на 100 г, на порцию, всего, стоимость)
+        // На 100 г
+        document.getElementById('per-100g-cal').textContent = data.per_100g.calories;
+        document.getElementById('per-100g-proteins').textContent = data.per_100g.proteins;
+        document.getElementById('per-100g-fats').textContent = data.per_100g.fats;
+        document.getElementById('per-100g-carbs').textContent = data.per_100g.carbs;
+
+        // На порцию
+        document.getElementById('per-portion-cal').textContent = data.per_portion.calories;
+        document.getElementById('per-portion-proteins').textContent = data.per_portion.proteins;
+        document.getElementById('per-portion-fats').textContent = data.per_portion.fats;
+        document.getElementById('per-portion-carbs').textContent = data.per_portion.carbs;
+
+        // Всего
+        document.getElementById('total-cal').textContent = data.total.calories;
+        document.getElementById('total-proteins').textContent = data.total.proteins;
+        document.getElementById('total-fats').textContent = data.total.fats;
+        document.getElementById('total-carbs').textContent = data.total.carbs;
+
+        // Стоимость
+        const priceFullEl = document.getElementById('price-full');
+        const priceActualEl = document.getElementById('price-actual');
+        if (priceFullEl) priceFullEl.textContent = data.full_cost.toFixed(2);
+        if (priceActualEl) priceActualEl.textContent = data.actual_cost.toFixed(2);
+
+    } catch (err) {
+        console.error('Ошибка пересчёта:', err);
+    }
+});
 </script>
 {% endblock %}
