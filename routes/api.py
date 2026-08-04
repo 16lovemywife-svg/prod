@@ -7,21 +7,13 @@ api_bp = Blueprint('api', __name__)
 
 @api_bp.route('/calculate-nutrition/<int:recipe_id>', methods=['POST'])
 def calculate_nutrition_api(recipe_id):
-    """
-    API для пересчёта КБЖУ.
-    Принимает обновлённые количества ингредиентов и количество порций.
-    """
     recipe = Recipe.query.get_or_404(recipe_id)
     data = request.get_json() or {}
-
-    # Обновляем порции если переданы
     portions = data.get('portions', recipe.default_portions)
 
-    # Если переданы обновлённые ингредиенты - создаём временный объект для расчёта
+    custom_ingredients = None
     if 'ingredients' in data:
-        print("Получены ingredients:", data['ingredients']) # временные файлы
-        # Создаём временные объекты ингредиентов для расчёта
-        temp_ingredients = []
+        custom_ingredients = []
         for ing_data in data['ingredients']:
             product = Product.query.get(ing_data['product_id'])
             if product:
@@ -30,18 +22,9 @@ def calculate_nutrition_api(recipe_id):
                     'quantity': float(ing_data.get('quantity', 0)),
                     'unit': ing_data.get('unit', 'г')
                 })()
-                temp_ingredients.append(temp_ing)
+                custom_ingredients.append(temp_ing)
 
-        # Временно подменяем ингредиенты для расчёта
-        original_ingredients = recipe.ingredients
-        recipe.ingredients = temp_ingredients
-        nutrition = calculate_recipe_nutrition(recipe, portions)
-        print("Новые total.calories:", nutrition['total']['calories'])
-        recipe.ingredients = original_ingredients
-    else:
-        nutrition = calculate_recipe_nutrition(recipe, portions)
-        print("Использую исходные ингредиенты")
-
+    nutrition = calculate_recipe_nutrition(recipe, portions, custom_ingredients)
     return jsonify(nutrition)
 
 

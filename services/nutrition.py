@@ -93,22 +93,17 @@ def calculate_ingredient_cost(product, quantity_grams):
         return 0.0, 0.0, 0, ''
 
 
-def calculate_recipe_nutrition(recipe, portions=None):
+def calculate_recipe_nutrition(recipe, portions=None, custom_ingredients=None):
     """
     Рассчитывает КБЖУ и стоимость для рецепта.
-
-    Возвращает:
-    {
-        'total': {...},
-        'per_portion': {...},
-        'per_100g': {...},
-        'full_cost': float,      # Полная стоимость (покупка целых упаковок)
-        'actual_cost': float,    # Фактическая стоимость (только использованное)
-        'ingredients_detail': [...]  # Детализация по каждому ингредиенту
-    }
+    Можно передать custom_ingredients (список временных объектов с product, quantity, unit)
+    для расчёта на основе масштабированных ингредиентов.
     """
     if portions is None:
         portions = recipe.default_portions or 1
+
+    # Используем кастомные ингредиенты, если они переданы, иначе – оригинальные
+    source_ingredients = custom_ingredients if custom_ingredients is not None else recipe.ingredients
 
     total_calories = 0.0
     total_proteins = 0.0
@@ -121,50 +116,68 @@ def calculate_recipe_nutrition(recipe, portions=None):
     ingredients_detail = []
     unpriced = []
 
-    for ingredient in recipe.ingredients:
-        if ingredient.product:
-            factor = ingredient.quantity / 100.0
+    for ingredient in source_ingredients:
+        product = ingredient.product
+        if not product:
+            continue
+        factor = ingredient.quantity / 100.0
 
-            # КБЖУ
-            total_calories += ingredient.product.calories * factor
-            total_proteins += ingredient.product.proteins * factor
-            total_fats += ingredient.product.fats * factor
-            total_carbs += ingredient.product.carbs * factor
-            total_weight += ingredient.quantity
+        # КБЖУ
+        total_calories += product.calories * factor
+        total_proteins += product.proteins * factor
+        total_fats += product.fats * factor
+        total_carbs += product.carbs * factor
+        total_weight += ingredient.quantity
 
-            # Стоимость
-            actual_cost, full_cost, buy_amount, buy_unit = calculate_ingredient_cost(
-                ingredient.product, ingredient.quantity
-            )
+        # Стоимость
+        actual_cost, full_cost, buy_amount, buy_unit = calculate_ingredient_cost(product, ingredient.quantity)
+        total_actual_cost += actual_cost
+        total_full_cost += full_cost
 
-            total_actual_cost += actual_cost
-            total_full_cost += full_cost
+        if product.price > 0:
+            ingredients_detail.append({
+                'name': product.name,
+                'quantity': ingredient.quantity,
+                'unit': ingredient.unit if hasattr(ingredient, 'unit') else 'г',
+                'price': product.price,
+                'price_unit': product.price_unit,
+                'actual_cost': actual_cost,
+                'full_cost': full_cost,
+                'buy_amount': buy_amount,
+                'buy_unit': buy_unit
+            })
+        else:
+            unpriced.append(product.name)
+            ingredients_detail.append({
+                'name': product.name,
+                'quantity': ingredient.quantity,
+                'unit': ingredient.unit if hasattr(ingredient, 'unit') else 'г',
+                'price': 0,
+                'price_unit': '',
+                'actual_cost': 0,
+                'full_cost': 0,
+                'buy_amount': 0,
+                'buy_unit': ''
+            })
 
-            if ingredient.product.price > 0:
-                ingredients_detail.append({
-                    'name': ingredient.product.name,
-                    'quantity': ingredient.quantity,
-                    'unit': ingredient.unit,
-                    'price': ingredient.product.price,
-                    'price_unit': ingredient.product.price_unit,
-                    'actual_cost': actual_cost,
-                    'full_cost': full_cost,
-                    'buy_amount': buy_amount,
-                    'buy_unit': buy_unit
-                })
-            else:
-                unpriced.append(ingredient.product.name)
-                ingredients_detail.append({
-                    'name': ingredient.product.name,
-                    'quantity': ingredient.quantity,
-                    'unit': ingredient.unit,
-                    'price': 0,
-                    'price_unit': '',
-                    'actual_cost': 0,
-                    'full_cost': 0,
-                    'buy_amount': 0,
-                    'buy_unit': ''
-                })
+    # Расчёт per_portion и per_100g
+    per_portion = {
+        'calories': round(total_calories / portions, 1) if portions > 0 else 0,
+        'proteins': round(total_proteins / portions, 1) if portions > 0 else 0,
+        'fats': round(total_fats / portions, 1) if portions > 0 else 0,
+        'carbs': round(total_carbs / portions, 1) if portions > 0 else 0,
+        'actual_cost': round(total_actual_cost / portions, 2) if portions > 0 else 0,
+        'full_cost': round(total_full_cost / portions, 2) if portions > 0 else 0,
+    }
+
+    per_100g = {
+        'calories': round((total_calories / total_weight) * 100, 1) if total_weight > 0 else 0,
+        'proteins': round((total_proteins / total_weight) * 100, 1) if total_weight > 0 else 0,
+        'fats': round((total_fats / total_weight) * 100, 1) if total_weight > 0 else 0,
+        'carbs': round((total_carbs / total_weight) * 100, 1) if total_weight > 0 else 0,
+        'actual_cost': round((total_actual_cost / total_weight) * 100, 2) if total_weight > 0 else 0,
+        'full_cost': round((total_full_cost / total_weight) * 100, 2) if total_weight > 0 else 0,
+    }
 
     return {
         'total': {
@@ -174,22 +187,8 @@ def calculate_recipe_nutrition(recipe, portions=None):
             'carbs': round(total_carbs, 1),
             'weight': round(total_weight, 1),
         },
-        'per_portion': {
-            'calories': round(total_calories / portions, 1) if portions > 0 else 0,
-            'proteins': round(total_proteins / portions, 1) if portions > 0 else 0,
-            'fats': round(total_fats / portions, 1) if portions > 0 else 0,
-            'carbs': round(total_carbs / portions, 1) if portions > 0 else 0,
-            'actual_cost': round(total_actual_cost / portions, 2) if portions > 0 else 0,
-            'full_cost': round(total_full_cost / portions, 2) if portions > 0 else 0,
-        },
-        'per_100g': {
-            'calories': round((total_calories / total_weight) * 100, 1) if total_weight > 0 else 0,
-            'proteins': round((total_proteins / total_weight) * 100, 1) if total_weight > 0 else 0,
-            'fats': round((total_fats / total_weight) * 100, 1) if total_weight > 0 else 0,
-            'carbs': round((total_carbs / total_weight) * 100, 1) if total_weight > 0 else 0,
-            'actual_cost': round((total_actual_cost / total_weight) * 100, 2) if total_weight > 0 else 0,
-            'full_cost': round((total_full_cost / total_weight) * 100, 2) if total_weight > 0 else 0,
-        },
+        'per_portion': per_portion,
+        'per_100g': per_100g,
         'portions': portions,
         'actual_cost': round(total_actual_cost, 2),
         'full_cost': round(total_full_cost, 2),
