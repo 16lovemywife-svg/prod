@@ -46,8 +46,8 @@
             <button class="btn btn-sm btn-outline" onclick="changePortion(1)">+</button>
         </div>
 
-        <!-- КБЖУ + стоимость (4 колонки) -->
-        <div class="nutrition-grid">
+        <!-- КБЖУ + цена (4 колонки) -->
+        <div class="nutrition-grid" id="nutrition-block">
             <!-- На 100 г -->
             <div class="nutrition-item">
                 <div class="nutrition-value"><span id="per-100g-cal">{{ nutrition.per_100g.calories }}</span></div>
@@ -81,7 +81,7 @@
                 </div>
             </div>
 
-            <!-- Стоимость (возвращаем как 4-й блок) -->
+            <!-- Цена (в магазине / факт) -->
             {% if nutrition.full_cost > 0 %}
             <div class="nutrition-item">
                 <div class="nutrition-value"><span id="price-full">{{ "%.2f"|format(nutrition.full_cost) }}</span> ₽</div>
@@ -117,63 +117,76 @@
     </div>
 </div>
 
-<!-- Ингредиенты -->
+<!-- ====== ИНГРЕДИЕНТЫ (сворачиваемый блок) ====== -->
 <div class="recipe-section mt-4">
-    <h3>🥑 Ингредиенты</h3>
-    <ul class="ingredient-list" id="ingredients-list">
-        {% for ingredient in recipe.ingredients %}
-        <li class="ingredient-row"
-            data-product-id="{{ ingredient.product.id if ingredient.product else '' }}"
-            data-original-qty="{{ ingredient.quantity }}"
-            data-unit="{{ ingredient.unit }}">
-            <span class="ingredient-name">
-                {{ ingredient.product.name if ingredient.product else '—' }}
-            </span>
-            <span class="ingredient-quantity">
-                {{ ingredient.quantity }} {{ ingredient.unit }}
-            </span>
-        </li>
-        {% endfor %}
-    </ul>
+    <div class="d-flex justify-content-between align-items-center">
+        <h3 class="mb-0">🥑 Ингредиенты</h3>
+        <button class="btn btn-sm btn-outline" onclick="toggleSection('ingredients-content', this)">
+            ▲ Скрыть
+        </button>
+    </div>
+    <div id="ingredients-content">
+        <ul class="ingredient-list mt-3" id="ingredients-list">
+            {% for ingredient in recipe.ingredients %}
+            <li class="ingredient-row"
+                data-product-id="{{ ingredient.product.id if ingredient.product else '' }}"
+                data-original-qty="{{ ingredient.quantity }}"
+                data-unit="{{ ingredient.unit }}">
+                <span class="ingredient-name">
+                    {{ ingredient.product.name if ingredient.product else '—' }}
+                </span>
+                <span class="ingredient-quantity">
+                    {{ ingredient.quantity }} {{ ingredient.unit }}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
 </div>
 
-<!-- Приготовление -->
+<!-- ====== ПРИГОТОВЛЕНИЕ (сворачиваемый блок) ====== -->
 <div class="recipe-section mt-4">
-    <h3>📝 Приготовление</h3>
-    {% if steps %}
-        {% for step in steps %}
-        <div class="step-item">
-            <div class="step-number">{{ step.step_number }}</div>
-            <div class="step-content">
-                <p>{{ step.instruction }}</p>
-                {% if step.timer_minutes and step.timer_minutes > 0 %}
-                <div class="d-flex align-items-center gap-2 mt-2">
-                    <span class="step-timer">⏱ {{ step.timer_minutes }} мин</span>
-                    <span class="timer-display" style="color: var(--neon-orange); font-weight: 700;"></span>
-                    <button class="start-timer-btn btn btn-sm btn-primary"
-                            data-minutes="{{ step.timer_minutes }}">▶ Запустить</button>
+    <div class="d-flex justify-content-between align-items-center">
+        <h3 class="mb-0">📝 Приготовление</h3>
+        <button class="btn btn-sm btn-outline" onclick="toggleSection('steps-content', this)">
+            ▲ Скрыть
+        </button>
+    </div>
+    <div id="steps-content">
+        {% if steps %}
+            {% for step in steps %}
+            <div class="step-item mt-3">
+                <div class="step-number">{{ step.step_number }}</div>
+                <div class="step-content">
+                    <p>{{ step.instruction }}</p>
+                    {% if step.timer_minutes and step.timer_minutes > 0 %}
+                    <div class="d-flex align-items-center gap-2 mt-2">
+                        <span class="step-timer">⏱ {{ step.timer_minutes }} мин</span>
+                        <span class="timer-display" style="color: var(--neon-orange); font-weight: 700;"></span>
+                        <button class="start-timer-btn btn btn-sm btn-primary"
+                                data-minutes="{{ step.timer_minutes }}">▶ Запустить</button>
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
-        </div>
-        {% endfor %}
-    {% else %}
-        <p style="color: var(--text-muted);">Шаги не добавлены.</p>
-    {% endif %}
+            {% endfor %}
+        {% else %}
+            <p class="mt-3" style="color: var(--text-muted);">Шаги не добавлены.</p>
+        {% endif %}
+    </div>
 </div>
 
-<!-- Стоимость блюда (раскрывающийся раздел с детализацией) -->
+<!-- ====== СТОИМОСТЬ БЛЮДА (сворачиваемый блок) ====== -->
 {% if nutrition.ingredients_detail and nutrition.priced_count > 0 %}
 <div class="card mt-4" style="border-color: rgba(255, 215, 0, 0.3);">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center">
             <h3 style="color: #ffd700;">💰 Стоимость блюда</h3>
-            <button class="btn btn-sm btn-outline" onclick="togglePriceDetails()">
-                📋 <span id="priceToggleText">Детали ▼</span>
+            <button class="btn btn-sm btn-outline" onclick="toggleSection('price-content', this)">
+                📋 <span class="toggle-text">Детали ▼</span>
             </button>
         </div>
-
-        <div id="priceDetailsContent" style="display:none;">
+        <div id="price-content" style="display:none;">
             <!-- Четыре ценовые карточки -->
             <div class="nutrition-grid" style="margin-top: 0.8rem;">
                 <div class="nutrition-item">
@@ -270,17 +283,36 @@ function changePortion(delta) {
     slider.dispatchEvent(new Event('input'));
 }
 
-function togglePriceDetails() {
-    const content = document.getElementById('priceDetailsContent');
-    const btn = document.getElementById('priceToggleText');
-    if (content.style.display === 'none') {
+// Универсальная функция для сворачивания/разворачивания секций
+function toggleSection(sectionId, btn) {
+    const content = document.getElementById(sectionId);
+    if (!content) return;
+    const isHidden = content.style.display === 'none';
+    if (isHidden) {
         content.style.display = 'block';
-        btn.textContent = 'Скрыть ▲';
+        if (btn) {
+            const toggleText = btn.querySelector('.toggle-text');
+            if (toggleText) {
+                toggleText.textContent = 'Скрыть ▲';
+            } else {
+                btn.innerHTML = btn.innerHTML.replace('▼', '▲').replace('Показать', 'Скрыть');
+            }
+        }
     } else {
         content.style.display = 'none';
-        btn.textContent = 'Детали ▼';
+        if (btn) {
+            const toggleText = btn.querySelector('.toggle-text');
+            if (toggleText) {
+                toggleText.textContent = 'Детали ▼';
+            } else {
+                btn.innerHTML = btn.innerHTML.replace('▲', '▼').replace('Скрыть', 'Показать');
+            }
+        }
     }
 }
+
+// Инициализация: скрываем ценовой контент по умолчанию (уже установлено через style="display:none;")
+// Для ингредиентов и шагов контент виден изначально.
 
 (function() {
     const slider = document.getElementById('portion-scaler');
@@ -348,11 +380,13 @@ function togglePriceDetails() {
             document.getElementById('total-fats').textContent = data.total.fats;
             document.getElementById('total-carbs').textContent = data.total.carbs;
 
-            // Верхний блок стоимости
-            document.getElementById('price-full').textContent = data.full_cost.toFixed(2);
-            document.getElementById('price-actual').textContent = data.actual_cost.toFixed(2);
+            // Цена в верхней сетке
+            const priceFullEl = document.getElementById('price-full');
+            const priceActualEl = document.getElementById('price-actual');
+            if (priceFullEl) priceFullEl.textContent = data.full_cost.toFixed(2);
+            if (priceActualEl) priceActualEl.textContent = data.actual_cost.toFixed(2);
 
-            // Ценовые карточки в детализации
+            // Ценовые карточки в деталях
             document.getElementById('price-100g').textContent = data.per_100g.actual_cost.toFixed(2);
             document.getElementById('price-portion').textContent = data.per_portion.actual_cost.toFixed(2);
             document.getElementById('price-actual-detail').textContent = data.actual_cost.toFixed(2);
