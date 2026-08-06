@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Дневник питания{% endblock %}
+
+{% block content %}
+<h1 style="color: var(--neon-green);">📖 Дневник питания</h1>
+
+<!-- Выбор даты -->
+<div class="date-navigator" style="display:flex; gap:1rem; align-items:center; margin-bottom:2rem;">
+    <a href="{{ url_for('diary.diary', date=prev_date.isoformat()) }}" class="btn btn-sm btn-outline">◀</a>
+    <form method="GET" action="{{ url_for('diary.diary') }}" style="display:flex; gap:0.5rem;">
+        <input type="date" name="date" value="{{ date.isoformat() }}" class="form-control" style="width:200px;">
+        <button type="submit" class="btn btn-sm btn-primary">Перейти</button>
+    </form>
+    <a href="{{ url_for('diary.diary', date=next_date.isoformat()) }}" class="btn btn-sm btn-outline">▶</a>
+    <a href="{{ url_for('diary.diary') }}" class="btn btn-sm btn-outline">Сегодня</a>
+</div>
+
+<!-- Итоги дня -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h3>📊 Итоги за {{ date.strftime('%d.%m.%Y') }}</h3>
+        <div class="nutrition-grid">
+            <div class="nutrition-item">
+                <div class="nutrition-value">{{ totals.calories|round(1) }}</div>
+                <div class="nutrition-label">ккал</div>
+                <div class="nutrition-detail">цель: {{ goal.calories }}</div>
+            </div>
+            <div class="nutrition-item">
+                <div class="nutrition-value">{{ totals.proteins|round(1) }}</div>
+                <div class="nutrition-label">Белки (г)</div>
+                <div class="nutrition-detail">цель: {{ goal.proteins }}</div>
+            </div>
+            <div class="nutrition-item">
+                <div class="nutrition-value">{{ totals.fats|round(1) }}</div>
+                <div class="nutrition-label">Жиры (г)</div>
+                <div class="nutrition-detail">цель: {{ goal.fats }}</div>
+            </div>
+            <div class="nutrition-item">
+                <div class="nutrition-value">{{ totals.carbs|round(1) }}</div>
+                <div class="nutrition-label">Углеводы (г)</div>
+                <div class="nutrition-detail">цель: {{ goal.carbs }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Список приёмов пищи -->
+{% for meal in meals %}
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4>
+                {% if meal.meal_type == 'завтрак' %}🌅{% elif meal.meal_type == 'обед' %}☀️{% elif meal.meal_type == 'ужин' %}🌙{% else %}🍪{% endif %}
+                {{ meal.meal_type|capitalize }} ({{ meal.time.strftime('%H:%M') }})
+            </h4>
+            <div class="d-flex gap-2">
+                <span class="badge badge-primary">{{ meal.total_calories()|round(1) }} ккал</span>
+                <button class="btn btn-sm btn-outline" onclick="toggleSection('entries-{{ meal.id }}', this)">▼</button>
+                <form method="POST" action="{{ url_for('diary.delete_meal', meal_id=meal.id) }}" onsubmit="return confirm('Удалить приём пищи?')">
+                    <button type="submit" class="btn btn-sm btn-danger">🗑</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="entries-{{ meal.id }}" class="section-content mt-2">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th>Тип</th>
+                        <th>Количество</th>
+                        <th>Ккал</th>
+                        <th>Б</th>
+                        <th>Ж</th>
+                        <th>У</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in meal.entries %}
+                    <tr>
+                        <td>
+                            {% if entry.entry_type == 'recipe' and entry.recipe %}
+                                {{ entry.recipe.title }}
+                            {% elif entry.product %}
+                                {{ entry.product.name }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>{{ 'Рецепт' if entry.entry_type == 'recipe' else 'Продукт' }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('diary.edit_entry', entry_id=entry.id) }}" style="display:inline;">
+                                <input type="number" name="quantity" value="{{ entry.quantity }}" step="0.1" min="0.1" style="width:80px;" class="form-control form-control-sm d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline">✓</button>
+                            </form>
+                        </td>
+                        <td>{{ entry.calories()|round(1) }}</td>
+                        <td>{{ entry.proteins()|round(1) }}</td>
+                        <td>{{ entry.fats()|round(1) }}</td>
+                        <td>{{ entry.carbs()|round(1) }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('diary.delete_entry', entry_id=entry.id) }}" onsubmit="return confirm('Удалить позицию?')">
+                                <button type="submit" class="btn btn-sm btn-danger">✕</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Кнопка добавления позиции -->
+            <button class="btn btn-sm btn-success" onclick="showAddEntryModal({{ meal.id }})">+ Добавить блюдо/продукт</button>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Кнопка добавления приёма -->
+<div class="text-center mt-3">
+    <button class="btn btn-primary" onclick="showAddMealModal()">+ Добавить приём пищи</button>
+</div>
+
+<!-- Модальное окно для добавления приёма (скрыто) -->
+<div id="addMealModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h3>Новый приём пищи</h3>
+    <form method="POST" action="{{ url_for('diary.add_meal') }}">
+        <input type="hidden" name="date" value="{{ date.isoformat() }}">
+        <div class="form-group">
+            <label>Тип</label>
+            <select name="meal_type" class="form-control">
+                <option value="завтрак">Завтрак</option>
+                <option value="обед">Обед</option>
+                <option value="ужин">Ужин</option>
+                <option value="перекус">Перекус</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Время</label>
+            <input type="time" name="time" value="{{ now.strftime('%H:%M') }}" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-outline" onclick="hideAddMealModal()">Отмена</button>
+    </form>
+</div>
+
+<!-- Модальное окно для добавления позиции (скрыто) -->
+<div id="addEntryModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h3>Добавить в приём</h3>
+    <form id="addEntryForm" method="POST">
+        <input type="hidden" name="entry_type" id="entryTypeInput">
+        <div class="form-group">
+            <label>Тип</label>
+            <select id="entryTypeSelect" class="form-control" onchange="updateEntryForm()">
+                <option value="recipe">Рецепт</option>
+                <option value="product">Продукт</option>
+            </select>
+        </div>
+        <div class="form-group" id="recipeSelectGroup">
+            <label>Рецепт</label>
+            <select name="recipe_id" class="form-control">
+                {% for rec in all_recipes %}
+                <option value="{{ rec.id }}">{{ rec.title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" id="productSelectGroup" style="display:none;">
+            <label>Продукт</label>
+            <select name="product_id" class="form-control">
+                {% for prod in all_products %}
+                <option value="{{ prod.id }}">{{ prod.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Количество (порции / г)</label>
+            <input type="number" name="quantity" value="1" step="0.1" min="0.1" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Добавить</button>
+        <button type="button" class="btn btn-outline" onclick="hideAddEntryModal()">Отмена</button>
+    </form>
+</div>
+
+<!-- Цели -->
+<div class="card mt-4">
+    <div class="card-body">
+        <h3>🎯 Цели на день</h3>
+        <form method="POST" action="{{ url_for('diary.update_goals') }}">
+            <div class="d-flex gap-3">
+                <div class="form-group">
+                    <label>Ккал</label>
+                    <input type="number" name="calories" value="{{ goal.calories }}" class="form-control" style="width:120px;">
+                </div>
+                <div class="form-group">
+                    <label>Белки (г)</label>
+                    <input type="number" name="proteins" value="{{ goal.proteins }}" class="form-control" style="width:120px;">
+                </div>
+                <div class="form-group">
+                    <label>Жиры (г)</label>
+                    <input type="number" name="fats" value="{{ goal.fats }}" class="form-control" style="width:120px;">
+                </div>
+                <div class="form-group">
+                    <label>Углеводы (г)</label>
+                    <input type="number" name="carbs" value="{{ goal.carbs }}" class="form-control" style="width:120px;">
+                </div>
+                <div class="form-group align-self-end">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Функции для модальных окон
+function showAddMealModal() {
+    document.getElementById('addMealModal').style.display = 'block';
+}
+function hideAddMealModal() {
+    document.getElementById('addMealModal').style.display = 'none';
+}
+
+let currentMealId = null;
+function showAddEntryModal(mealId) {
+    currentMealId = mealId;
+    document.getElementById('addEntryForm').action = '/diary/add-entry/' + mealId;
+    document.getElementById('addEntryModal').style.display = 'block';
+}
+function hideAddEntryModal() {
+    document.getElementById('addEntryModal').style.display = 'none';
+}
+
+function updateEntryForm() {
+    const type = document.getElementById('entryTypeSelect').value;
+    document.getElementById('entryTypeInput').value = type;
+    if (type === 'recipe') {
+        document.getElementById('recipeSelectGroup').style.display = 'block';
+        document.getElementById('productSelectGroup').style.display = 'none';
+    } else {
+        document.getElementById('recipeSelectGroup').style.display = 'none';
+        document.getElementById('productSelectGroup').style.display = 'block';
+    }
+}
+
+// Универсальная функция сворачивания (уже есть в main.js, но продублируем для независимости)
+function toggleSection(id, btn) {
+    const el = document.getElementById(id);
+    if (el.style.display === 'none' || el.style.display === '') {
+        el.style.display = 'block';
+        btn.innerHTML = '▼';
+    } else {
+        el.style.display = 'none';
+        btn.innerHTML = '▶';
+    }
+}
+</script>
+{% endblock %}
