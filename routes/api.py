@@ -30,16 +30,14 @@ def calculate_nutrition_api(recipe_id):
 
 @api_bp.route('/search-products')
 def search_products():
-    """Поиск продуктов для автодополнения"""
-    query = request.args.get('q', '')
-    if len(query) < 2:
-        return jsonify([])
-
-    products = Product.query.filter(
-        Product.name.ilike(f'%{query}%')
-    ).limit(10).all()
-
+    query = request.args.get('q', '').strip()
+    if query:
+        products = Product.query.filter(Product.name.ilike(f'%{query}%')).limit(20).all()
+    else:
+        # Показываем первые 20 продуктов при пустом поле
+        products = Product.query.order_by(Product.name).limit(20).all()
     return jsonify([p.to_dict() for p in products])
+
 
 
 @api_bp.route('/replace-ingredient/<int:recipe_id>', methods=['POST'])
@@ -94,3 +92,16 @@ def find_by_ingredients():
     recipes = Recipe.query.filter(Recipe.id.in_(recipe_ids)).limit(20).all()
 
     return jsonify([r.to_dict() for r in recipes])
+
+
+@api_bp.route('/search-recipes')
+def search_recipes():
+    query = request.args.get('q', '').strip()
+    if query:
+        recipes = Recipe.query.filter(Recipe.title.ilike(f'%{query}%')).limit(20).all()
+    else:
+        recipes = Recipe.query.order_by(Recipe.title).limit(20).all()
+    return jsonify([{
+        'id': r.id,
+        'title': r.title,
+    } for r in recipes])

@@ -187,3 +187,155 @@ function updateStepNumbers() {
         if (strong) strong.textContent = `Шаг ${i + 1}`;
     });
 }
+
+// ===== Autocomplete =====
+class Autocomplete {
+    constructor(inputElement, options = {}) {
+        this.input = inputElement;
+        this.apiUrl = options.apiUrl || '/api/search-products';
+        this.placeholder = options.placeholder || 'Начните вводить...';
+        this.minLength = options.minLength || 0; // 0 - показывать всё при фокусе
+        this.showAllOnFocus = options.showAllOnFocus !== undefined ? options.showAllOnFocus : true;
+        this.onSelect = options.onSelect || function(item) {};
+        this.valueField = options.valueField || 'id';
+        this.labelField = options.labelField || 'name';
+
+        this.dropdown = null;
+        this.hiddenInput = null;
+        this.selectedItem = null;
+        this.isOpen = false;
+
+        this.init();
+    }
+
+    init() {
+        // Создаём скрытый input для хранения id
+        this.hiddenInput = document.createElement('input');
+        this.hiddenInput.type = 'hidden';
+        this.hiddenInput.name = this.input.name + '_id';
+        this.input.parentNode.insertBefore(this.hiddenInput, this.input.nextSibling);
+
+        // Убираем оригинальный name, чтобы не отправлялся текст
+        this.input.removeAttribute('name');
+        this.input.setAttribute('autocomplete', 'off');
+        this.input.setAttribute('placeholder', this.placeholder);
+
+        // Создаём контейнер для выпадающего списка
+        this.dropdown = document.createElement('div');
+        this.dropdown.className = 'autocomplete-dropdown';
+        this.dropdown.style.display = 'none';
+        this.input.parentNode.style.position = 'relative';
+        this.input.parentNode.appendChild(this.dropdown);
+
+        // Обработчики событий
+        this.input.addEventListener('input', this.debounce(() => this.fetchSuggestions(), 300));
+        this.input.addEventListener('focus', () => {
+            // При фокусе показываем все элементы, если поле пустое и опция включена
+            if (this.showAllOnFocus && this.input.value.trim() === '') {
+                this.fetchSuggestions(true);
+            } else if (this.input.value.length >= this.minLength) {
+                this.fetchSuggestions();
+            }
+        });
+        // Если уже есть значение (при редактировании), можно установить
+    }
+
+    async fetchSuggestions(forceAll = false) {
+        let query = this.input.value.trim();
+        if (forceAll) {
+            query = ''; // Отправим пустой запрос, чтобы получить всё
+        }
+        if (!forceAll && query.length < this.minLength) {
+            this.close();
+            return;
+        }
+
+        try {
+            const url = `${this.apiUrl}?q=${encodeURIComponent(query)}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            this.renderDropdown(data);
+        } catch (err) {
+            console.error('Autocomplete error:', err);
+        }
+    }
+
+    renderDropdown(items) {
+        if (!items || items.length === 0) {
+            this.close();
+            return;
+        }
+
+        this.dropdown.innerHTML = '';
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.textContent = item[this.labelField];
+            div.addEventListener('click', () => this.selectItem(item));
+            this.dropdown.appendChild(div);
+        });
+
+        this.dropdown.style.display = 'block';
+        this.isOpen = true;
+    }
+
+    selectItem(item) {
+        this.input.value = item[this.labelField];
+        this.hiddenInput.value = item[this.valueField];
+        this.selectedItem = item;
+        this.close();
+        if (this.onSelect) this.onSelect(item);
+    }
+
+    close() {
+        this.dropdown.style.display = 'none';
+        this.isOpen = false;
+    }
+
+    handleKeyboard(e) {
+        if (!this.isOpen) return;
+        const items = this.dropdown.querySelectorAll('.autocomplete-item');
+        if (!items.length) return;
+
+        const current = this.dropdown.querySelector('.autocomplete-item.active');
+        let index = Array.from(items).indexOf(current);
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            index = (index + 1) % items.length;
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            index = (index - 1 + items.length) % items.length;
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (current) {
+                current.click();
+            }
+            return;
+        } else if (e.key === 'Escape') {
+            this.close();
+            return;
+        } else {
+            return;
+        }
+
+        items.forEach(item => item.classList.remove('active'));
+        items[index].classList.add('active');
+        items[index].scrollIntoView({ block: 'nearest' });
+    }
+
+    debounce(func, wait) {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    // Установить значение извне (для редактирования)
+    setValue(id, label) {
+        this.input.value = label;
+        this.hiddenInput.value = id;
+        this.selectedItem = { [this.valueField]: id, [this.labelField]: label };
+    }
+}

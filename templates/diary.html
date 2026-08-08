@@ -170,7 +170,7 @@
     </div>
 </div>
 
-<!-- Модальные окна (те же) -->
+<!-- Модальное окно для добавления приёма (как было) -->
 <div id="addMealModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
     <h3>Новый приём пищи</h3>
     <form method="POST" action="{{ url_for('diary.add_meal') }}">
@@ -193,10 +193,14 @@
     </form>
 </div>
 
+<!-- Модальное окно для добавления позиции (с автодополнением) -->
 <div id="addEntryModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
     <h3>Добавить в приём</h3>
-    <form id="addEntryForm" method="POST">
+    <form id="addEntryForm" method="POST" onsubmit="return prepareEntrySubmit()">
         <input type="hidden" name="entry_type" id="entryTypeInput" value="recipe">
+        <input type="hidden" name="recipe_id" id="hiddenRecipeId" value="">
+        <input type="hidden" name="product_id" id="hiddenProductId" value="">
+
         <div class="form-group">
             <label>Тип</label>
             <select id="entryTypeSelect" class="form-control" onchange="updateEntryForm()">
@@ -206,19 +210,11 @@
         </div>
         <div class="form-group" id="recipeSelectGroup">
             <label>Рецепт</label>
-            <select name="recipe_id" class="form-control">
-                {% for rec in all_recipes %}
-                <option value="{{ rec.id }}">{{ rec.title }}</option>
-                {% endfor %}
-            </select>
+            <input type="text" id="diary-recipe-input" class="form-control" placeholder="Поиск рецепта..." autocomplete="off">
         </div>
         <div class="form-group" id="productSelectGroup" style="display:none;">
             <label>Продукт</label>
-            <select name="product_id" class="form-control">
-                {% for prod in all_products %}
-                <option value="{{ prod.id }}">{{ prod.name }}</option>
-                {% endfor %}
-            </select>
+            <input type="text" id="diary-product-input" class="form-control" placeholder="Поиск продукта..." autocomplete="off">
         </div>
         <div class="form-group">
             <label>Количество (порции / г)</label>
@@ -232,6 +228,7 @@
 
 {% block extra_js %}
 <script>
+// Функции для модальных окон
 function showAddMealModal() { document.getElementById('addMealModal').style.display = 'block'; }
 function hideAddMealModal() { document.getElementById('addMealModal').style.display = 'none'; }
 
@@ -239,6 +236,13 @@ let currentMealId = null;
 function showAddEntryModal(mealId) {
     currentMealId = mealId;
     document.getElementById('addEntryForm').action = '/diary/add-entry/' + mealId;
+    // Сброс полей
+    document.getElementById('diary-recipe-input').value = '';
+    document.getElementById('hiddenRecipeId').value = '';
+    document.getElementById('diary-product-input').value = '';
+    document.getElementById('hiddenProductId').value = '';
+    document.getElementById('entryTypeSelect').value = 'recipe';
+    updateEntryForm();
     document.getElementById('addEntryModal').style.display = 'block';
 }
 function hideAddEntryModal() { document.getElementById('addEntryModal').style.display = 'none'; }
@@ -250,6 +254,48 @@ function updateEntryForm() {
     document.getElementById('productSelectGroup').style.display = type === 'product' ? 'block' : 'none';
 }
 
+// Проверка перед отправкой формы позиции
+function prepareEntrySubmit() {
+    const type = document.getElementById('entryTypeInput').value;
+    if (type === 'recipe') {
+        if (!document.getElementById('hiddenRecipeId').value) {
+            alert('Выберите рецепт из списка');
+            return false;
+        }
+    } else {
+        if (!document.getElementById('hiddenProductId').value) {
+            alert('Выберите продукт из списка');
+            return false;
+        }
+    }
+    return true;
+}
+
+// Инициализация автодополнения
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof Autocomplete !== 'undefined') {
+        // Для рецептов
+        new Autocomplete(document.getElementById('diary-recipe-input'), {
+            apiUrl: '/api/search-recipes',
+            labelField: 'title',
+            valueField: 'id',
+            placeholder: 'Поиск рецепта...',
+            onSelect: function(item) {
+                document.getElementById('hiddenRecipeId').value = item.id;
+            }
+        });
+        // Для продуктов
+        new Autocomplete(document.getElementById('diary-product-input'), {
+            apiUrl: '/api/search-products',
+            placeholder: 'Поиск продукта...',
+            onSelect: function(item) {
+                document.getElementById('hiddenProductId').value = item.id;
+            }
+        });
+    }
+});
+
+// Универсальная функция сворачивания
 function toggleSection(id, btn) {
     const el = document.getElementById(id);
     if (el.style.display === 'none' || el.style.display === '') {
