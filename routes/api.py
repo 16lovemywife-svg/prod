@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from models import Recipe, RecipeIngredient, Product, db
 from services.nutrition import calculate_recipe_nutrition
+from sqlalchemy import func
 
 api_bp = Blueprint('api', __name__)
 
@@ -32,9 +33,10 @@ def calculate_nutrition_api(recipe_id):
 def search_products():
     query = request.args.get('q', '').strip()
     if query:
-        products = Product.query.filter(Product.name.ilike(f'%{query}%')).limit(20).all()
+        products = Product.query.filter(
+            Product.name.ilike(f'%{query}%')
+        ).limit(20).all()
     else:
-        # Показываем первые 20 продуктов при пустом поле
         products = Product.query.order_by(Product.name).limit(20).all()
     return jsonify([p.to_dict() for p in products])
 
@@ -98,10 +100,9 @@ def find_by_ingredients():
 def search_recipes():
     query = request.args.get('q', '').strip()
     if query:
-        recipes = Recipe.query.filter(Recipe.title.ilike(f'%{query}%')).limit(20).all()
+        recipes = Recipe.query.filter(
+            Recipe.title.ilike(f'%{query}%')
+        ).limit(20).all()
     else:
         recipes = Recipe.query.order_by(Recipe.title).limit(20).all()
-    return jsonify([{
-        'id': r.id,
-        'title': r.title,
-    } for r in recipes])
+    return jsonify([{'id': r.id, 'title': r.title} for r in recipes])
