@@ -161,38 +161,49 @@ class MealEntry(db.Model):
     recipe = db.relationship('Recipe', lazy=True)
     product = db.relationship('Product', lazy=True)
 
-    def calories(self):
+    def _recipe_nutrition_per_gram(self):
+        """Возвращает КБЖУ на 1 грамм готового блюда"""
         from services.nutrition import calculate_recipe_nutrition
+        if not self.recipe:
+            return {'calories': 0, 'proteins': 0, 'fats': 0, 'carbs': 0}
+        nutrition = calculate_recipe_nutrition(self.recipe, 1)
+        total = nutrition['total']
+        total_weight = total['weight'] if total['weight'] > 0 else 1
+        return {
+            'calories': total['calories'] / total_weight,
+            'proteins': total['proteins'] / total_weight,
+            'fats': total['fats'] / total_weight,
+            'carbs': total['carbs'] / total_weight,
+        }
+
+    def calories(self):
         if self.entry_type == 'recipe' and self.recipe:
-            nutrition = calculate_recipe_nutrition(self.recipe, self.quantity)
-            return nutrition['total']['calories']
+            per_gram = self._recipe_nutrition_per_gram()
+            return per_gram['calories'] * self.quantity
         elif self.entry_type == 'product' and self.product:
             return (self.product.calories * self.quantity) / 100
         return 0
 
     def proteins(self):
-        from services.nutrition import calculate_recipe_nutrition
         if self.entry_type == 'recipe' and self.recipe:
-            nutrition = calculate_recipe_nutrition(self.recipe, self.quantity)
-            return nutrition['total']['proteins']
+            per_gram = self._recipe_nutrition_per_gram()
+            return per_gram['proteins'] * self.quantity
         elif self.entry_type == 'product' and self.product:
             return (self.product.proteins * self.quantity) / 100
         return 0
 
     def fats(self):
-        from services.nutrition import calculate_recipe_nutrition
         if self.entry_type == 'recipe' and self.recipe:
-            nutrition = calculate_recipe_nutrition(self.recipe, self.quantity)
-            return nutrition['total']['fats']
+            per_gram = self._recipe_nutrition_per_gram()
+            return per_gram['fats'] * self.quantity
         elif self.entry_type == 'product' and self.product:
             return (self.product.fats * self.quantity) / 100
         return 0
 
     def carbs(self):
-        from services.nutrition import calculate_recipe_nutrition
         if self.entry_type == 'recipe' and self.recipe:
-            nutrition = calculate_recipe_nutrition(self.recipe, self.quantity)
-            return nutrition['total']['carbs']
+            per_gram = self._recipe_nutrition_per_gram()
+            return per_gram['carbs'] * self.quantity
         elif self.entry_type == 'product' and self.product:
             return (self.product.carbs * self.quantity) / 100
         return 0
@@ -205,3 +216,80 @@ class DietGoal(db.Model):
     proteins = db.Column(db.Float, default=100.0)
     fats = db.Column(db.Float, default=70.0)
     carbs = db.Column(db.Float, default=250.0)
+
+class UserProfile(db.Model):
+    """Профиль пользователя для расчёта калорий"""
+    id = db.Column(db.Integer, primary_key=True)
+    weight = db.Column(db.Float, default=70.0)      # кг
+    height = db.Column(db.Float, default=170.0)     # см
+    age = db.Column(db.Integer, default=30)
+    gender = db.Column(db.String(10), default='male')  # male/female
+    activity_level = db.Column(db.String(20), default='medium')  # low/medium/high
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'weight': self.weight,
+            'height': self.height,
+            'age': self.age,
+            'gender': self.gender,
+            'activity_level': self.activity_level
+        }
+
+
+class ActivityLog(db.Model):
+    """Запись о выполненной активности"""
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, default=datetime.utcnow().date())
+    activity_type = db.Column(db.String(100), nullable=False)  # бег, ходьба, плавание и т.д.
+    duration_minutes = db.Column(db.Integer, nullable=False, default=30)
+    intensity = db.Column(db.String(20), default='medium')  # low/medium/high
+    calories_burned = db.Column(db.Float, nullable=False, default=0.0)
+    notes = db.Column(db.String(200), default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'date': self.date.isoformat(),
+            'activity_type': self.activity_type,
+            'duration_minutes': self.duration_minutes,
+            'intensity': self.intensity,
+            'calories_burned': self.calories_burned,
+            'notes': self.notes
+        }
+
+class ActivityGoal(db.Model):
+    """Дневные цели по активности"""
+    id = db.Column(db.Integer, primary_key=True)
+    calories = db.Column(db.Float, default=500.0)            # ккал в день
+    duration_minutes = db.Column(db.Integer, default=60)     # минут в день
+
+class ActivityType(db.Model):
+    """Пользовательские типы активности с MET-значениями"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    met_low = db.Column(db.Float, default=2.0)
+    met_medium = db.Column(db.Float, default=4.0)
+    met_high = db.Column(db.Float, default=6.0)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'met_low': self.met_low,
+            'met_medium': self.met_medium,
+            'met_high': self.met_high
+        }
+
+class BodyMeasurement(db.Model):
+    """Замеры тела пользователя"""
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, default=datetime.utcnow().date())
+    weight = db.Column(db.Float, nullable=False, default=0.0)     # кг
+    chest = db.Column(db.Float, default=0.0)      # обхват груди, см
+    waist = db.Column(db.Float, default=0.0)      # талия, см
+    hips = db.Column(db.Float, default=0.0)       # бёдра, см
+    biceps = db.Column(db.Float, default=0.0)     # бицепс, см
+    notes = db.Column(db.String(200), default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
