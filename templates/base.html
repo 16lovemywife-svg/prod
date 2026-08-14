@@ -23,6 +23,9 @@
             <li><a href="{{ url_for('recipes.add_recipe') }}" class="{% if request.endpoint == 'recipes.add_recipe' %}active{% endif %}">
                 ➕ Добавить рецепт
             </a></li>
+            <li><a href="{{ url_for('diary.diary') }}" class="{% if 'diary' in request.endpoint %}active{% endif %}">
+                📖 Дневник
+            </a></li>
             <li><a href="{{ url_for('main.index', favorites='1') }}" class="{% if request.args.get('favorites') == '1' %}active{% endif %}">
                 ❤️ Избранное
             </a></li>

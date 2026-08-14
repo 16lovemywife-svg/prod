@@ -118,3 +118,90 @@ class ShoppingItem(db.Model):
             'unit': self.unit,
             'purchased': self.purchased
         }
+
+class MealRecord(db.Model):
+    """Приём пищи (завтрак, обед и т.д.)"""
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, default=datetime.utcnow().date())
+    meal_type = db.Column(db.String(30), nullable=False, default='завтрак')  # завтрак, обед, ужин, перекус
+    time = db.Column(db.Time, nullable=False, default=datetime.utcnow().time())
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    entries = db.relationship('MealEntry', backref='meal', lazy=True, cascade="all, delete-orphan")
+
+    def total_calories(self):
+        return sum(entry.calories() for entry in self.entries)
+
+    def total_proteins(self):
+        return sum(entry.proteins() for entry in self.entries)
+
+    def total_fats(self):
+        return sum(entry.fats() for entry in self.entries)
+
+    def total_carbs(self):
+        return sum(entry.carbs() for entry in self.entries)
+
+
+class MealEntry(db.Model):
+    """Позиция в приёме пищи (рецепт или продукт)"""
+    id = db.Column(db.Integer, primary_key=True)
+    meal_id = db.Column(db.Integer, db.ForeignKey('meal_record.id'), nullable=False)
+
+    # Тип позиции: 'recipe' или 'product'
+    entry_type = db.Column(db.String(10), nullable=False)
+
+    # ID рецепта или продукта
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=True)
+
+    # Количество: для рецепта – порции, для продукта – граммы
+    quantity = db.Column(db.Float, nullable=False, default=1.0)
+
+    # Связи
+    recipe = db.relationship('Recipe', lazy=True)
+    product = db.relationship('Product', lazy=True)
+
+    def calories(self):
+        from services.nutrition import calculate_recipe_nutrition
+        if self.entry_type == 'recipe' and self.recipe:
+            nutrition = calculate_recipe_nutrition(self.recipe, self.quantity)
+            return nutrition['total']['calories']
+        elif self.entry_type == 'product' and self.product:
+            return (self.product.calories * self.quantity) / 100
+        return 0
+
+    def proteins(self):
+        from services.nutrition import calculate_recipe_nutrition
+        if self.entry_type == 'recipe' and self.recipe:
+            nutrition = calculate_recipe_nutrition(self.recipe, self.quantity)
+            return nutrition['total']['proteins']
+        elif self.entry_type == 'product' and self.product:
+            return (self.product.proteins * self.quantity) / 100
+        return 0
+
+    def fats(self):
+        from services.nutrition import calculate_recipe_nutrition
+        if self.entry_type == 'recipe' and self.recipe:
+            nutrition = calculate_recipe_nutrition(self.recipe, self.quantity)
+            return nutrition['total']['fats']
+        elif self.entry_type == 'product' and self.product:
+            return (self.product.fats * self.quantity) / 100
+        return 0
+
+    def carbs(self):
+        from services.nutrition import calculate_recipe_nutrition
+        if self.entry_type == 'recipe' and self.recipe:
+            nutrition = calculate_recipe_nutrition(self.recipe, self.quantity)
+            return nutrition['total']['carbs']
+        elif self.entry_type == 'product' and self.product:
+            return (self.product.carbs * self.quantity) / 100
+        return 0
+
+
+class DietGoal(db.Model):
+    """Дневные цели по питанию"""
+    id = db.Column(db.Integer, primary_key=True)
+    calories = db.Column(db.Float, default=2000.0)
+    proteins = db.Column(db.Float, default=100.0)
+    fats = db.Column(db.Float, default=70.0)
+    carbs = db.Column(db.Float, default=250.0)
