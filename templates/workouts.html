@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Тренировки{% endblock %}
+
+{% block content %}
+<h1 style="color: var(--neon-orange);">🏋️ Тренировки</h1>
+
+<!-- Выбор даты -->
+<div class="date-navigator" style="display:flex; gap:1rem; align-items:center; margin-bottom:2rem;">
+    <a href="{{ url_for('workouts.workouts', date=prev_date.isoformat()) }}" class="btn btn-sm btn-outline">◀</a>
+    <form method="GET" action="{{ url_for('workouts.workouts') }}" style="display:flex; gap:0.5rem;">
+        <input type="date" name="date" value="{{ date.isoformat() }}" class="form-control" style="width:200px;">
+        <button type="submit" class="btn btn-sm btn-primary">Перейти</button>
+    </form>
+    <a href="{{ url_for('workouts.workouts', date=next_date.isoformat()) }}" class="btn btn-sm btn-outline">▶</a>
+    <a href="{{ url_for('workouts.workouts') }}" class="btn btn-sm btn-outline">Сегодня</a>
+</div>
+
+<!-- Итог за день -->
+<div class="card mb-4">
+    <div class="card-body d-flex gap-4 flex-wrap">
+        <div>
+            <span class="badge badge-primary">Сожжено: {{ burned_calories|round(1) }} ккал</span>
+        </div>
+        <div>
+            <span class="badge badge-success">Длительность: {{ total_duration }} мин</span>
+        </div>
+    </div>
+</div>
+
+<!-- Кнопка добавления -->
+<div class="text-center mb-4">
+    <button class="btn btn-primary" onclick="showAddActivityModal()">+ Добавить активность</button>
+</div>
+
+<!-- Список активностей -->
+<div class="card">
+    <div class="card-body">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Тип</th>
+                    <th>Длительность</th>
+                    <th>Интенсивность</th>
+                    <th>Калории</th>
+                    <th>Заметка</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for activity in activities %}
+                <tr>
+                    <td>{{ activity.activity_type }}</td>
+                    <td>{{ activity.duration_minutes }} мин</td>
+                    <td>
+                        {% if activity.intensity == 'low' %}Низкая
+                        {% elif activity.intensity == 'medium' %}Средняя
+                        {% else %}Высокая{% endif %}
+                    </td>
+                    <td>{{ activity.calories_burned|round(1) }}</td>
+                    <td>{{ activity.notes or '—' }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" onclick="showEditActivityModal({{ activity.id }}, '{{ activity.activity_type }}', {{ activity.duration_minutes }}, '{{ activity.intensity }}', {{ activity.calories_burned }}, '{{ activity.notes }}')">✏️</button>
+                        <form method="POST" action="{{ url_for('workouts.delete_activity', activity_id=activity.id) }}" onsubmit="return confirm('Удалить активность?')">
+                            <button type="submit" class="btn btn-sm btn-danger">✕</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Модальное окно добавления активности -->
+<div id="addActivityModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h3>Новая активность</h3>
+    <form method="POST" action="{{ url_for('workouts.add_activity') }}">
+        <input type="hidden" name="date" value="{{ date.isoformat() }}">
+        <div class="form-group">
+            <label>Тип активности</label>
+            <select name="activity_type" class="form-control">
+                <option value="бег">Бег</option>
+                <option value="ходьба">Ходьба</option>
+                <option value="плавание">Плавание</option>
+                <option value="велосипед">Велосипед</option>
+                <option value="силовая тренировка">Силовая тренировка</option>
+                <option value="йога">Йога</option>
+                <option value="танцы">Танцы</option>
+                <option value="аэробика">Аэробика</option>
+                <option value="другое">Другое</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Длительность (минуты)</label>
+            <input type="number" name="duration_minutes" value="30" min="1" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Интенсивность</label>
+            <select name="intensity" class="form-control">
+                <option value="low">Низкая</option>
+                <option value="medium" selected>Средняя</option>
+                <option value="high">Высокая</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Вес (кг)</label>
+            <input type="number" name="weight" value="{{ profile.weight if profile else 70 }}" step="0.1" min="0" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Сожжённые калории (пусто = авторасчёт)</label>
+            <input type="number" name="calories_burned" step="0.1" min="0" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Заметка</label>
+            <input type="text" name="notes" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-outline" onclick="hideAddActivityModal()">Отмена</button>
+    </form>
+</div>
+
+<!-- Модальное окно редактирования активности -->
+<div id="editActivityModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h3>Изменить активность</h3>
+    <form method="POST" id="editActivityForm">
+        <div class="form-group">
+            <label>Тип активности</label>
+            <select name="activity_type" id="edit-activity-type" class="form-control">
+                <option value="бег">Бег</option>
+                <option value="ходьба">Ходьба</option>
+                <option value="плавание">Плавание</option>
+                <option value="велосипед">Велосипед</option>
+                <option value="силовая тренировка">Силовая тренировка</option>
+                <option value="йога">Йога</option>
+                <option value="танцы">Танцы</option>
+                <option value="аэробика">Аэробика</option>
+                <option value="другое">Другое</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Длительность (минуты)</label>
+            <input type="number" name="duration_minutes" id="edit-duration" class="form-control" min="1" required>
+        </div>
+        <div class="form-group">
+            <label>Интенсивность</label>
+            <select name="intensity" id="edit-intensity" class="form-control">
+                <option value="low">Низкая</option>
+                <option value="medium">Средняя</option>
+                <option value="high">Высокая</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Сожжённые калории</label>
+            <input type="number" name="calories_burned" id="edit-calories" class="form-control" step="0.1" min="0">
+        </div>
+        <div class="form-group">
+            <label>Заметка</label>
+            <input type="text" name="notes" id="edit-notes" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-outline" onclick="hideEditActivityModal()">Отмена</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showAddActivityModal() { document.getElementById('addActivityModal').style.display = 'block'; }
+function hideAddActivityModal() { document.getElementById('addActivityModal').style.display = 'none'; }
+
+function showEditActivityModal(id, type, duration, intensity, calories, notes) {
+    document.getElementById('editActivityForm').action = '/workouts/edit/' + id;
+    document.getElementById('edit-activity-type').value = type;
+    document.getElementById('edit-duration').value = duration;
+    document.getElementById('edit-intensity').value = intensity;
+    document.getElementById('edit-calories').value = calories;
+    document.getElementById('edit-notes').value = notes;
+    document.getElementById('editActivityModal').style.display = 'block';
+}
+function hideEditActivityModal() { document.getElementById('editActivityModal').style.display = 'none'; }
+</script>
+{% endblock %}

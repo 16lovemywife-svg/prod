@@ -1,0 +1,100 @@
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from models import ActivityLog, UserProfile, db
+from services.activity import calculate_calories_burned
+from datetime import datetime, date, timedelta
+
+workouts_bp = Blueprint('workouts', __name__)
+
+
+@workouts_bp.route('/')
+def workouts():
+    date_str = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
+    try:
+        workout_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        workout_date = date.today()
+
+    prev_date = workout_date - timedelta(days=1)
+    next_date = workout_date + timedelta(days=1)
+
+    activities = ActivityLog.query.filter(ActivityLog.date == workout_date).order_by(ActivityLog.created_at).all()
+    user_profile = UserProfile.query.first()
+    if not user_profile:
+        user_profile = UserProfile()
+        db.session.add(user_profile)
+        db.session.commit()
+
+    burned_calories = sum(a.calories_burned for a in activities)
+    total_duration = sum(a.duration_minutes for a in activities)
+
+    return render_template('workouts.html',
+                           date=workout_date,
+                           prev_date=prev_date,
+                           next_date=next_date,
+                           activities=activities,
+                           profile=user_profile,
+                           burned_calories=burned_calories,
+                           total_duration=total_duration)
+
+
+@workouts_bp.route('/add', methods=['POST'])
+def add_activity():
+    date_str = request.form.get('date', datetime.now().strftime('%Y-%m-%d'))
+    activity_type = request.form.get('activity_type', 'другое')
+    duration_minutes = int(request.form.get('duration_minutes', 30))
+    intensity = request.form.get('intensity', 'medium')
+    weight = float(request.form.get('weight', 70))
+
+    calories_input = request.form.get('calories_burned', '')
+    if calories_input.strip():
+        calories = float(calories_input)
+    else:
+        calories = calculate_calories_burned(weight, activity_type, duration_minutes, intensity)
+
+    try:
+        workout_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        workout_date = date.today()
+
+    activity = ActivityLog(
+        date=workout_date,
+        activity_type=activity_type,
+        duration_minutes=duration_minutes,
+        intensity=intensity,
+        calories_burned=calories,
+        notes=request.form.get('notes', '')
+    )
+    db.session.add(activity)
+    db.session.commit()
+    flash('Активность добавлена!', 'success')
+    return redirect(url_for('workouts.workouts', date=date_str))
+
+
+@workouts_bp.route('/edit/<int:activity_id>', methods=['POST'])
+def edit_activity(activity_id):
+    activity = ActivityLog.query.get_or_404(activity_id)
+    activity.activity_type = request.form.get('activity_type', activity.activity_type)
+    activity.duration_minutes = int(request.form.get('duration_minutes', activity.duration_minutes))
+    activity.intensity = request.form.get('intensity', activity.intensity)
+
+    calories_input = request.form.get('calories_burned', '')
+    if calories_input.strip():
+        activity.calories_burned = float(calories_input)
+    else:
+        weight = float(request.form.get('weight', 70))
+        activity.calories_burned = calculate_calories_burned(weight, activity.activity_type, activity.duration_minutes, activity.intensity)
+
+    activity.notes = request.form.get('notes', '')
+    db.session.commit()
+    flash('Активность обновлена', 'success')
+    return redirect(url_for('workouts.workouts', date=activity.date.strftime('%Y-%m-%d')))
+
+
+@workouts_bp.route('/delete/<int:activity_id>', methods=['POST'])
+def delete_activity(activity_id):
+    activity = ActivityLog.query.get_or_404(activity_id)
+    activity_date = activity.date
+    db.session.delete(activity)
+    db.session.commit()
+    flash('Активность удалена', 'success')
+    return redirect(url_for('workouts.workouts', date=activity_date.strftime('%Y-%m-%d')))

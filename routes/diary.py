@@ -5,6 +5,10 @@ import json
 from datetime import datetime, date, time, timedelta
 from services.activity import calculate_calories_burned
 from models import ActivityLog
+from datetime import datetime, date, time, timedelta
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from models import MealRecord, MealEntry, Recipe, Product, DietGoal, ActivityLog, UserProfile, db
+from services.activity import calculate_calories_burned
 
 diary_bp = Blueprint('diary', __name__)
 
@@ -21,8 +25,8 @@ def diary():
     prev_date = diary_date - timedelta(days=1)
     next_date = diary_date + timedelta(days=1)
 
-
     meals = MealRecord.query.filter(MealRecord.date == diary_date).order_by(MealRecord.time).all()
+    activities = ActivityLog.query.filter(ActivityLog.date == diary_date).order_by(ActivityLog.created_at).all()
 
     goal = DietGoal.query.first()
     if not goal:
@@ -30,11 +34,19 @@ def diary():
         db.session.add(goal)
         db.session.commit()
 
+    user_profile = UserProfile.query.first()
+    if not user_profile:
+        user_profile = UserProfile()
+        db.session.add(user_profile)
+        db.session.commit()
+
     total_calories = sum(meal.total_calories() for meal in meals)
     total_proteins = sum(meal.total_proteins() for meal in meals)
     total_fats = sum(meal.total_fats() for meal in meals)
     total_carbs = sum(meal.total_carbs() for meal in meals)
-    activities = ActivityLog.query.filter(ActivityLog.date == diary_date).order_by(ActivityLog.created_at).all()
+
+    burned_calories = sum(a.calories_burned for a in activities)
+    balance = total_calories - burned_calories
 
     return render_template('diary.html',
                            date=diary_date,
@@ -42,13 +54,16 @@ def diary():
                            next_date=next_date,
                            now=datetime.now(),
                            meals=meals,
-                           goal=goal,
                            activities=activities,
+                           goal=goal,
+                           profile=user_profile,
                            totals={
                                'calories': total_calories,
                                'proteins': total_proteins,
                                'fats': total_fats,
-                               'carbs': total_carbs
+                               'carbs': total_carbs,
+                               'burned': burned_calories,
+                               'balance': balance
                            })
 
 
@@ -187,3 +202,25 @@ def delete_activity(activity_id):
     db.session.commit()
     flash('Активность удалена', 'success')
     return redirect(url_for('diary.diary', date=activity_date.strftime('%Y-%m-%d')))
+
+
+@diary_bp.route('/edit-activity/<int:activity_id>', methods=['POST'])
+def edit_activity(activity_id):
+    activity = ActivityLog.query.get_or_404(activity_id)
+    activity.activity_type = request.form.get('activity_type', activity.activity_type)
+    activity.duration_minutes = int(request.form.get('duration_minutes', activity.duration_minutes))
+    activity.intensity = request.form.get('intensity', activity.intensity)
+
+    # Если калории введены вручную, используем их, иначе рассчитываем заново
+    calories_input = request.form.get('calories_burned', '')
+    if calories_input.strip():
+        activity.calories_burned = float(calories_input)
+    else:
+        weight = 70  # можно брать из профиля, но для простоты 70
+        activity.calories_burned = calculate_calories_burned(weight, activity.activity_type, activity.duration_minutes,
+                                                             activity.intensity)
+
+    activity.notes = request.form.get('notes', '')
+    db.session.commit()
+    flash('Активность обновлена', 'success')
+    return redirect(url_for('diary.diary', date=activity.date.strftime('%Y-%m-%d')))

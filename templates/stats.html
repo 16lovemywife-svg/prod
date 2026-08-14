@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Итоги и прогресс{% endblock %}
+
+{% block content %}
+<h1 style="color: var(--neon-blue);">📈 Итоги и прогресс</h1>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h3>Калории за неделю</h3>
+        <canvas id="weeklyCaloriesChart" width="400" height="200"></canvas>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h3>Прогресс веса и обхватов</h3>
+        <canvas id="weightChart" width="400" height="200"></canvas>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h3>Замеры тела</h3>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Вес</th>
+                    <th>Грудь</th>
+                    <th>Талия</th>
+                    <th>Бёдра</th>
+                    <th>Бицепс</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in measurements %}
+                <tr>
+                    <td>{{ m.date.strftime('%d.%m.%Y') }}</td>
+                    <td>{{ m.weight }} кг</td>
+                    <td>{{ m.chest or '—' }} см</td>
+                    <td>{{ m.waist or '—' }} см</td>
+                    <td>{{ m.hips or '—' }} см</td>
+                    <td>{{ m.biceps or '—' }} см</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('stats.delete_measurement', measurement_id=m.id) }}" onsubmit="return confirm('Удалить замер?')">
+                            <button type="submit" class="btn btn-sm btn-danger">✕</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button class="btn btn-primary" onclick="showAddMeasurementModal()">+ Добавить замер</button>
+    </div>
+</div>
+
+<!-- Модальное окно добавления замера -->
+<div id="addMeasurementModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h3>Новый замер</h3>
+    <form method="POST" action="{{ url_for('stats.add_measurement') }}">
+        <div class="form-group">
+            <label>Дата</label>
+            <input type="date" name="date" value="{{ today.isoformat() }}" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Вес (кг)</label>
+            <input type="number" name="weight" step="0.1" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Грудь (см)</label>
+            <input type="number" name="chest" step="0.1" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Талия (см)</label>
+            <input type="number" name="waist" step="0.1" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Бёдра (см)</label>
+            <input type="number" name="hips" step="0.1" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Бицепс (см)</label>
+            <input type="number" name="biceps" step="0.1" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Заметка</label>
+            <input type="text" name="notes" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-outline" onclick="hideAddMeasurementModal()">Отмена</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showAddMeasurementModal() { document.getElementById('addMeasurementModal').style.display = 'block'; }
+function hideAddMeasurementModal() { document.getElementById('addMeasurementModal').style.display = 'none'; }
+
+// Графики через Chart.js
+document.addEventListener('DOMContentLoaded', function() {
+    // Калории за неделю
+    const ctx1 = document.getElementById('weeklyCaloriesChart').getContext('2d');
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: {{ labels|tojson }},
+            datasets: [
+                { label: 'Потреблено', data: {{ calorie_intake|tojson }}, backgroundColor: '#ff6b35' },
+                { label: 'Сожжено', data: {{ calorie_burn|tojson }}, backgroundColor: '#39ff14' }
+            ]
+        }
+    });
+
+    // Прогресс веса и обхватов
+    const ctx2 = document.getElementById('weightChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'line',
+        data: {
+            labels: {{ weight_labels|tojson }},
+            datasets: [
+                {
+                    label: 'Вес (кг)',
+                    data: {{ weight_data|tojson }},
+                    borderColor: '#00d4ff',
+                    backgroundColor: '#00d4ff',
+                    yAxisID: 'y-weight',
+                    tension: 0.2
+                },
+                {
+                    label: 'Грудь (см)',
+                    data: {{ chest_data|tojson }},
+                    borderColor: '#ff6b35',
+                    backgroundColor: '#ff6b35',
+                    yAxisID: 'y-measure',
+                    tension: 0.2
+                },
+                {
+                    label: 'Талия (см)',
+                    data: {{ waist_data|tojson }},
+                    borderColor: '#ffd700',
+                    backgroundColor: '#ffd700',
+                    yAxisID: 'y-measure',
+                    tension: 0.2
+                },
+                {
+                    label: 'Бёдра (см)',
+                    data: {{ hips_data|tojson }},
+                    borderColor: '#39ff14',
+                    backgroundColor: '#39ff14',
+                    yAxisID: 'y-measure',
+                    tension: 0.2
+                },
+                {
+                    label: 'Бицепс (см)',
+                    data: {{ biceps_data|tojson }},
+                    borderColor: '#ff2d95',
+                    backgroundColor: '#ff2d95',
+                    yAxisID: 'y-measure',
+                    tension: 0.2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            scales: {
+                'y-weight': {
+                    type: 'linear',
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Вес (кг)'
+                    }
+                },
+                'y-measure': {
+                    type: 'linear',
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Обхваты (см)'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

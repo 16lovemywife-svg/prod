@@ -247,3 +247,15 @@ class ActivityLog(db.Model):
             'calories_burned': self.calories_burned,
             'notes': self.notes
         }
+
+class BodyMeasurement(db.Model):
+    """Замеры тела пользователя"""
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, default=datetime.utcnow().date())
+    weight = db.Column(db.Float, nullable=False, default=0.0)     # кг
+    chest = db.Column(db.Float, default=0.0)      # обхват груди, см
+    waist = db.Column(db.Float, default=0.0)      # талия, см
+    hips = db.Column(db.Float, default=0.0)       # бёдра, см
+    biceps = db.Column(db.Float, default=0.0)     # бицепс, см
+    notes = db.Column(db.String(200), default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
