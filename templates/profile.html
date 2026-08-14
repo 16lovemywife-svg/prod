@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Профиль{% endblock %}
+
+{% block content %}
+<h1 style="color: var(--neon-green);">👤 Профиль пользователя</h1>
+
+<div class="card mt-4">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('profile.profile') }}">
+            <div class="row">
+                <div class="col-md-6 form-group">
+                    <label class="form-label">Вес (кг)</label>
+                    <input type="number" name="weight" class="form-control" step="0.1" min="0"
+                           value="{{ profile.weight }}" required>
+                </div>
+                <div class="col-md-6 form-group">
+                    <label class="form-label">Рост (см)</label>
+                    <input type="number" name="height" class="form-control" step="0.1" min="0"
+                           value="{{ profile.height }}">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 form-group">
+                    <label class="form-label">Возраст</label>
+                    <input type="number" name="age" class="form-control" min="0"
+                           value="{{ profile.age }}">
+                </div>
+                <div class="col-md-6 form-group">
+                    <label class="form-label">Пол</label>
+                    <select name="gender" class="form-control">
+                        <option value="male" {% if profile.gender == 'male' %}selected{% endif %}>Мужской</option>
+                        <option value="female" {% if profile.gender == 'female' %}selected{% endif %}>Женский</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Уровень активности</label>
+                <select name="activity_level" class="form-control">
+                    <option value="low" {% if profile.activity_level == 'low' %}selected{% endif %}>Низкий</option>
+                    <option value="medium" {% if profile.activity_level == 'medium' %}selected{% endif %}>Средний</option>
+                    <option value="high" {% if profile.activity_level == 'high' %}selected{% endif %}>Высокий</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Сохранить профиль</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

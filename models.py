@@ -205,3 +205,45 @@ class DietGoal(db.Model):
     proteins = db.Column(db.Float, default=100.0)
     fats = db.Column(db.Float, default=70.0)
     carbs = db.Column(db.Float, default=250.0)
+
+class UserProfile(db.Model):
+    """Профиль пользователя для расчёта калорий"""
+    id = db.Column(db.Integer, primary_key=True)
+    weight = db.Column(db.Float, default=70.0)      # кг
+    height = db.Column(db.Float, default=170.0)     # см
+    age = db.Column(db.Integer, default=30)
+    gender = db.Column(db.String(10), default='male')  # male/female
+    activity_level = db.Column(db.String(20), default='medium')  # low/medium/high
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'weight': self.weight,
+            'height': self.height,
+            'age': self.age,
+            'gender': self.gender,
+            'activity_level': self.activity_level
+        }
+
+
+class ActivityLog(db.Model):
+    """Запись о выполненной активности"""
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, default=datetime.utcnow().date())
+    activity_type = db.Column(db.String(100), nullable=False)  # бег, ходьба, плавание и т.д.
+    duration_minutes = db.Column(db.Integer, nullable=False, default=30)
+    intensity = db.Column(db.String(20), default='medium')  # low/medium/high
+    calories_burned = db.Column(db.Float, nullable=False, default=0.0)
+    notes = db.Column(db.String(200), default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'date': self.date.isoformat(),
+            'activity_type': self.activity_type,
+            'duration_minutes': self.duration_minutes,
+            'intensity': self.intensity,
+            'calories_burned': self.calories_burned,
+            'notes': self.notes
+        }

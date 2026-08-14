@@ -16,7 +16,9 @@ def create_app():
     from routes.products import products_bp
     from routes.api import api_bp
     from routes.diary import diary_bp
+    from routes.profile import profile_bp
 
+    app.register_blueprint(profile_bp, url_prefix='/profile')
     app.register_blueprint(diary_bp, url_prefix='/diary')
     app.register_blueprint(main_bp)
     app.register_blueprint(recipes_bp, url_prefix='/recipes')

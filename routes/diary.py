@@ -3,6 +3,9 @@ from models import MealRecord, MealEntry, Recipe, Product, DietGoal, db
 from services.nutrition import calculate_recipe_nutrition
 import json
 from datetime import datetime, date, time, timedelta
+from services.activity import calculate_calories_burned
+from models import ActivityLog
+
 diary_bp = Blueprint('diary', __name__)
 
 
@@ -18,6 +21,7 @@ def diary():
     prev_date = diary_date - timedelta(days=1)
     next_date = diary_date + timedelta(days=1)
 
+
     meals = MealRecord.query.filter(MealRecord.date == diary_date).order_by(MealRecord.time).all()
 
     goal = DietGoal.query.first()
@@ -30,6 +34,7 @@ def diary():
     total_proteins = sum(meal.total_proteins() for meal in meals)
     total_fats = sum(meal.total_fats() for meal in meals)
     total_carbs = sum(meal.total_carbs() for meal in meals)
+    activities = ActivityLog.query.filter(ActivityLog.date == diary_date).order_by(ActivityLog.created_at).all()
 
     return render_template('diary.html',
                            date=diary_date,
@@ -38,6 +43,7 @@ def diary():
                            now=datetime.now(),
                            meals=meals,
                            goal=goal,
+                           activities=activities,
                            totals={
                                'calories': total_calories,
                                'proteins': total_proteins,
@@ -136,3 +142,48 @@ def update_goals():
     db.session.commit()
     flash('Цели обновлены!', 'success')
     return redirect(url_for('diary.diary'))
+
+
+@diary_bp.route('/add-activity', methods=['POST'])
+def add_activity():
+    """Добавление активности"""
+    date_str = request.form.get('date', datetime.now().strftime('%Y-%m-%d'))
+    activity_type = request.form.get('activity_type', 'другое')
+    duration_minutes = int(request.form.get('duration_minutes', 30))
+    intensity = request.form.get('intensity', 'medium')
+    weight = float(request.form.get('weight', 70))
+
+    # Если пользователь не ввёл калории вручную, рассчитываем
+    calories_input = request.form.get('calories_burned', '')
+    if calories_input.strip():
+        calories = float(calories_input)
+    else:
+        calories = calculate_calories_burned(weight, activity_type, duration_minutes, intensity)
+
+    try:
+        diary_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        diary_date = date.today()
+
+    activity = ActivityLog(
+        date=diary_date,
+        activity_type=activity_type,
+        duration_minutes=duration_minutes,
+        intensity=intensity,
+        calories_burned=calories,
+        notes=request.form.get('notes', '')
+    )
+    db.session.add(activity)
+    db.session.commit()
+    flash('Активность добавлена!', 'success')
+    return redirect(url_for('diary.diary', date=date_str))
+
+
+@diary_bp.route('/delete-activity/<int:activity_id>', methods=['POST'])
+def delete_activity(activity_id):
+    activity = ActivityLog.query.get_or_404(activity_id)
+    activity_date = activity.date
+    db.session.delete(activity)
+    db.session.commit()
+    flash('Активность удалена', 'success')
+    return redirect(url_for('diary.diary', date=activity_date.strftime('%Y-%m-%d')))

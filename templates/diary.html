@@ -170,6 +170,32 @@
     </div>
 </div>
 
+<!-- Блок активности -->
+<div class="card mt-3">
+    <div class="card-body">
+        <h4>🏃 Активность за {{ date.strftime('%d.%m.%Y') }}</h4>
+        {% set burned_total = activities|sum(attribute='calories_burned') %}
+        <div class="macro-bar">
+            <div class="macro-bar__label">Сожжено калорий</div>
+            <div class="macro-bar__values">{{ burned_total|round(1) }} ккал</div>
+        </div>
+
+        <ul class="activity-list" style="list-style:none; padding:0; margin-top:0.5rem;">
+            {% for activity in activities %}
+            <li class="d-flex justify-content-between align-items-center" style="padding:0.3rem 0; border-bottom:1px solid var(--border-color);">
+                <span>{{ activity.activity_type }} ({{ activity.duration_minutes }} мин)</span>
+                <span>{{ activity.calories_burned|round(1) }} ккал</span>
+                <form method="POST" action="{{ url_for('diary.delete_activity', activity_id=activity.id) }}" onsubmit="return confirm('Удалить активность?')">
+                    <button type="submit" class="btn btn-sm btn-danger">✕</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <button class="btn btn-sm btn-outline mt-2" onclick="showAddActivityModal()">+ Добавить активность</button>
+    </div>
+</div>
+
 <!-- Модальное окно для добавления приёма (как было) -->
 <div id="addMealModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
     <h3>Новый приём пищи</h3>
@@ -224,6 +250,56 @@
         <button type="button" class="btn btn-outline" onclick="hideAddEntryModal()">Отмена</button>
     </form>
 </div>
+
+<!-- Модальное окно активности -->
+<div id="addActivityModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h3>Новая активность</h3>
+    <form method="POST" action="{{ url_for('diary.add_activity') }}">
+        <input type="hidden" name="date" value="{{ date.isoformat() }}">
+
+        <div class="form-group">
+            <label>Тип активности</label>
+            <select name="activity_type" class="form-control">
+                <option value="бег">Бег</option>
+                <option value="ходьба">Ходьба</option>
+                <option value="плавание">Плавание</option>
+                <option value="велосипед">Велосипед</option>
+                <option value="силовая тренировка">Силовая тренировка</option>
+                <option value="йога">Йога</option>
+                <option value="танцы">Танцы</option>
+                <option value="аэробика">Аэробика</option>
+                <option value="другое">Другое</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Длительность (минуты)</label>
+            <input type="number" name="duration_minutes" value="30" min="1" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Интенсивность</label>
+            <select name="intensity" class="form-control">
+                <option value="low">Низкая</option>
+                <option value="medium" selected>Средняя</option>
+                <option value="high">Высокая</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Вес (кг)</label>
+            <input type="number" name="weight" value="{{ profile.weight if profile else 70 }}" step="0.1" min="0" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Сожжённые калории (оставьте пустым для авторасчёта)</label>
+            <input type="number" name="calories_burned" step="0.1" min="0" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Заметка</label>
+            <input type="text" name="notes" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-outline" onclick="hideAddActivityModal()">Отмена</button>
+    </form>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -231,6 +307,8 @@
 // Функции для модальных окон
 function showAddMealModal() { document.getElementById('addMealModal').style.display = 'block'; }
 function hideAddMealModal() { document.getElementById('addMealModal').style.display = 'none'; }
+function showAddActivityModal() { document.getElementById('addActivityModal').style.display = 'block'; }
+function hideAddActivityModal() { document.getElementById('addActivityModal').style.display = 'none'; }
 
 let currentMealId = null;
 function showAddEntryModal(mealId) {
@@ -306,5 +384,7 @@ function toggleSection(id, btn) {
         btn.innerHTML = btn.innerHTML.replace('▼', '▶').replace('Скрыть', 'Показать');
     }
 }
+
+
 </script>
 {% endblock %}
