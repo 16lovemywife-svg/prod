@@ -17,6 +17,9 @@
             <li><a href="{{ url_for('main.index') }}" class="{% if request.endpoint == 'main.index' %}active{% endif %}">
                 🏠 Главная
             </a></li>
+            <li><a href="{{ url_for('profile.profile') }}" class="{% if 'profile' in request.endpoint %}active{% endif %}">👤 Профиль</a></li>
+            <li><a href="{{ url_for('workouts.workouts') }}" class="{% if 'workouts' in request.endpoint %}active{% endif %}">🏋️ Тренировки</a></li>
+            <li><a href="{{ url_for('stats.stats') }}" class="{% if 'stats' in request.endpoint %}active{% endif %}">📈 Итоги</a></li>
             <li><a href="{{ url_for('products.product_list') }}" class="{% if 'products' in request.endpoint %}active{% endif %}">
                 📦 Продукты
             </a></li>

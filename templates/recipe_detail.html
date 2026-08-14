@@ -102,6 +102,7 @@
             <a href="{{ url_for('recipes.cooking_mode', recipe_id=recipe.id) }}"
                class="btn btn-sm btn-success" target="_blank">🔥 Режим готовки</a>
             <button class="btn btn-sm btn-primary" onclick="window.print()">🖨️ Печать</button>
+            <button class="btn btn-sm btn-outline" onclick="showAddToMealModal()">🍽️ В приём</button>
 
             <div class="dropdown">
                 <button class="btn btn-sm btn-outline dropdown-toggle">⋮ Ещё</button>
@@ -270,10 +271,50 @@
     </div>
 </div>
 {% endif %}
+
+<!-- Модальное окно добавления рецепта в приём пищи -->
+<div id="addToMealModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h3>Добавить в приём пищи</h3>
+    <form method="POST" action="{{ url_for('diary.add_recipe_to_meal') }}">
+        <input type="hidden" name="recipe_id" value="{{ recipe.id }}">
+        <div class="form-group">
+            <label>Дата</label>
+            <input type="date" name="date" value="{{ today.isoformat() }}" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Тип приёма</label>
+            <select name="meal_type" class="form-control">
+                <option value="завтрак">Завтрак</option>
+                <option value="обед">Обед</option>
+                <option value="ужин">Ужин</option>
+                <option value="перекус">Перекус</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Время</label>
+            <input type="time" name="time" value="{{ now.strftime('%H:%M') }}" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Вес (г)</label>
+            <input type="number" name="weight_grams" value="100" step="1" min="1" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Добавить</button>
+        <button type="button" class="btn btn-outline" onclick="hideAddToMealModal()">Отмена</button>
+    </form>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+
+
+function showAddToMealModal() {
+    document.getElementById('addToMealModal').style.display = 'block';
+}
+function hideAddToMealModal() {
+    document.getElementById('addToMealModal').style.display = 'none';
+}
+
 function changePortion(delta) {
     const slider = document.getElementById('portion-scaler');
     if (!slider) return;
@@ -412,5 +453,6 @@ function toggleSection(sectionId, btn) {
         }
     });
 })();
+
 </script>
 {% endblock %}

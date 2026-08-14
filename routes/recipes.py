@@ -5,6 +5,7 @@ from flask import (Blueprint, render_template, request, redirect,
 from werkzeug.utils import secure_filename
 from models import Recipe, RecipeIngredient, Product, db
 from services.nutrition import calculate_recipe_nutrition
+from datetime import datetime, date
 
 recipes_bp = Blueprint('recipes', __name__)
 
@@ -132,7 +133,9 @@ def view_recipe(recipe_id):
         recipe=recipe,
         nutrition=nutrition,
         steps=steps,
-        similar_recipes=similar_recipes
+        similar_recipes=similar_recipes,
+        today = date.today(),
+        now = datetime.now()
     )
 
 
