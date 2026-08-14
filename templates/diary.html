@@ -165,6 +165,17 @@
                         </form>
                     </div>
                 </div>
+                <!-- Блок активности -->
+                <div class="card-body">
+                    <h4>🏃 Активность</h4>
+                    <p style="font-size: 0.95rem;">
+                        Сожжено сегодня:
+                        <strong style="color: var(--neon-orange);">{{ totals.burned|round(1) }} ккал</strong>
+                    </p>
+                    <a href="{{ url_for('workouts.workouts', date=date.isoformat()) }}" class="btn btn-sm btn-outline">
+                        К тренировкам →
+                    </a>
+                </div>
             </div>
         </div>
     </div>

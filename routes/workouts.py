@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models import ActivityLog, UserProfile, BodyMeasurement, db
-from services.activity import calculate_calories_burned
+from models import ActivityLog, UserProfile, BodyMeasurement, ActivityGoal, ActivityType, db
+from services.activity import calculate_calories_burned, get_all_activity_types, MET_VALUES
 from datetime import datetime, date, timedelta
 
 workouts_bp = Blueprint('workouts', __name__)
@@ -27,10 +27,18 @@ def workouts():
     burned_calories = sum(a.calories_burned for a in activities)
     total_duration = sum(a.duration_minutes for a in activities)
 
-    # Получаем последний замер за выбранную дату
     measurement = BodyMeasurement.query.filter(
         BodyMeasurement.date == workout_date
     ).order_by(BodyMeasurement.created_at.desc()).first()
+
+    activity_goal = ActivityGoal.query.first()
+    if not activity_goal:
+        activity_goal = ActivityGoal()
+        db.session.add(activity_goal)
+        db.session.commit()
+
+    all_activity_types = get_all_activity_types()
+    custom_activity_types = ActivityType.query.order_by(ActivityType.name).all()
 
     return render_template('workouts.html',
                            date=workout_date,
@@ -41,43 +49,11 @@ def workouts():
                            burned_calories=burned_calories,
                            total_duration=total_duration,
                            measurement=measurement,
+                           activity_goal=activity_goal,
+                           all_activity_types=all_activity_types,
+                           custom_activity_types=custom_activity_types,
                            today=date.today())
 
-
-
-@workouts_bp.route('/add-measurement', methods=['POST'])
-def add_measurement():
-    """Добавление нового замера тела"""
-    date_str = request.form.get('date')
-    try:
-        measurement_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-    except (ValueError, TypeError):
-        measurement_date = date.today()
-
-    measurement = BodyMeasurement(
-        date=measurement_date,
-        weight=float(request.form.get('weight', 0)),
-        chest=float(request.form.get('chest', 0)),
-        waist=float(request.form.get('waist', 0)),
-        hips=float(request.form.get('hips', 0)),
-        biceps=float(request.form.get('biceps', 0)),
-        notes=request.form.get('notes', '')
-    )
-    db.session.add(measurement)
-    db.session.commit()
-    flash('Замер добавлен!', 'success')
-    return redirect(url_for('workouts.workouts', date=measurement_date.strftime('%Y-%m-%d')))
-
-
-@workouts_bp.route('/delete-measurement/<int:measurement_id>', methods=['POST'])
-def delete_measurement(measurement_id):
-    """Удаление замера"""
-    measurement = BodyMeasurement.query.get_or_404(measurement_id)
-    measurement_date = measurement.date
-    db.session.delete(measurement)
-    db.session.commit()
-    flash('Замер удалён', 'success')
-    return redirect(url_for('workouts.workouts', date=measurement_date.strftime('%Y-%m-%d')))
 
 @workouts_bp.route('/add', methods=['POST'])
 def add_activity():
@@ -140,3 +116,86 @@ def delete_activity(activity_id):
     db.session.commit()
     flash('Активность удалена', 'success')
     return redirect(url_for('workouts.workouts', date=activity_date.strftime('%Y-%m-%d')))
+
+
+@workouts_bp.route('/add-measurement', methods=['POST'])
+def add_measurement():
+    date_str = request.form.get('date')
+    try:
+        measurement_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        measurement_date = date.today()
+
+    measurement = BodyMeasurement(
+        date=measurement_date,
+        weight=float(request.form.get('weight', 0)),
+        chest=float(request.form.get('chest', 0)),
+        waist=float(request.form.get('waist', 0)),
+        hips=float(request.form.get('hips', 0)),
+        biceps=float(request.form.get('biceps', 0)),
+        notes=request.form.get('notes', '')
+    )
+    db.session.add(measurement)
+    db.session.commit()
+    flash('Замер добавлен!', 'success')
+    return redirect(url_for('workouts.workouts', date=measurement_date.strftime('%Y-%m-%d')))
+
+
+@workouts_bp.route('/delete-measurement/<int:measurement_id>', methods=['POST'])
+def delete_measurement(measurement_id):
+    measurement = BodyMeasurement.query.get_or_404(measurement_id)
+    measurement_date = measurement.date
+    db.session.delete(measurement)
+    db.session.commit()
+    flash('Замер удалён', 'success')
+    return redirect(url_for('workouts.workouts', date=measurement_date.strftime('%Y-%m-%d')))
+
+
+@workouts_bp.route('/update-goal', methods=['POST'])
+def update_goal():
+    goal = ActivityGoal.query.first()
+    if not goal:
+        goal = ActivityGoal()
+        db.session.add(goal)
+
+    goal.calories = float(request.form.get('calories', goal.calories))
+    goal.duration_minutes = int(request.form.get('duration_minutes', goal.duration_minutes))
+    db.session.commit()
+    flash('Цели обновлены!', 'success')
+    return redirect(url_for('workouts.workouts'))
+
+
+@workouts_bp.route('/add-activity-type', methods=['POST'])
+def add_activity_type():
+    name = request.form.get('name', '').strip().lower()
+    if not name:
+        flash('Название обязательно', 'error')
+        return redirect(url_for('workouts.workouts'))
+
+    if name in MET_VALUES:
+        flash('Такой тип уже существует', 'error')
+        return redirect(url_for('workouts.workouts'))
+
+    if ActivityType.query.filter_by(name=name).first():
+        flash('Такой тип уже существует', 'error')
+        return redirect(url_for('workouts.workouts'))
+
+    activity_type = ActivityType(
+        name=name,
+        met_low=float(request.form.get('met_low', 2.0)),
+        met_medium=float(request.form.get('met_medium', 4.0)),
+        met_high=float(request.form.get('met_high', 6.0))
+    )
+    db.session.add(activity_type)
+    db.session.commit()
+    flash('Тип активности добавлен!', 'success')
+    return redirect(url_for('workouts.workouts'))
+
+
+@workouts_bp.route('/delete-activity-type/<int:type_id>', methods=['POST'])
+def delete_activity_type(type_id):
+    activity_type = ActivityType.query.get_or_404(type_id)
+    db.session.delete(activity_type)
+    db.session.commit()
+    flash('Тип активности удалён', 'success')
+    return redirect(url_for('workouts.workouts'))

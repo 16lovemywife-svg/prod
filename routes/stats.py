@@ -7,14 +7,49 @@ stats_bp = Blueprint('stats', __name__)
 
 @stats_bp.route('/')
 def stats():
-    # Данные за последние 7 дней для графика калорий
     today = date.today()
-    week = [(today - timedelta(days=i)) for i in range(6, -1, -1)]
-    labels = [d.strftime('%d.%m') for d in week]
+    period = request.args.get('period', '7')  # 7, 30, 90, all
+
+    # Определяем начальную дату в зависимости от периода
+    if period == '7':
+        start_date = today - timedelta(days=6)
+    elif period == '30':
+        start_date = today - timedelta(days=29)
+    elif period == '90':
+        start_date = today - timedelta(days=89)
+    elif period == 'all':
+        # Ищем самую раннюю дату среди приёмов пищи и активностей
+        earliest_meal = MealRecord.query.order_by(MealRecord.date.asc()).first()
+        earliest_activity = ActivityLog.query.order_by(ActivityLog.date.asc()).first()
+        earliest_measurement = BodyMeasurement.query.order_by(BodyMeasurement.date.asc()).first()
+
+        min_dates = []
+        if earliest_meal:
+            min_dates.append(earliest_meal.date)
+        if earliest_activity:
+            min_dates.append(earliest_activity.date)
+        if earliest_measurement:
+            min_dates.append(earliest_measurement.date)
+
+        if min_dates:
+            start_date = min(min_dates)
+        else:
+            start_date = today - timedelta(days=30)  # если данных нет
+    else:
+        start_date = today - timedelta(days=6)
+
+    # Собираем даты от start_date до today (для графика калорий)
+    dates_list = []
+    current = start_date
+    while current <= today:
+        dates_list.append(current)
+        current += timedelta(days=1)
+
+    labels = [d.strftime('%d.%m') for d in dates_list]
 
     calorie_intake = []
     calorie_burn = []
-    for d in week:
+    for d in dates_list:
         meals = MealRecord.query.filter(MealRecord.date == d).all()
         activities = ActivityLog.query.filter(ActivityLog.date == d).all()
         intake = sum(meal.total_calories() for meal in meals)
@@ -22,16 +57,17 @@ def stats():
         calorie_intake.append(round(intake, 1))
         calorie_burn.append(round(burn, 1))
 
+    # Замеры тела за выбранный период (или все)
+    if period == 'all':
+        measurements = BodyMeasurement.query.order_by(BodyMeasurement.date.asc()).all()
+    else:
+        measurements = BodyMeasurement.query.filter(
+            BodyMeasurement.date >= start_date
+        ).order_by(BodyMeasurement.date.asc()).all()
 
-    # Последние замеры тела (уже отсортированы от старых к новым)
-    measurements = BodyMeasurement.query.order_by(BodyMeasurement.date.desc()).limit(10).all()
-    measurements.reverse()
-
-    # Прогресс веса
     weight_labels = [m.date.strftime('%d.%m') for m in measurements]
     weight_data = [m.weight for m in measurements]
 
-    # Данные для обхватов (null для отсутствующих значений)
     chest_data = [m.chest if m.chest and m.chest > 0 else None for m in measurements]
     waist_data = [m.waist if m.waist and m.waist > 0 else None for m in measurements]
     hips_data = [m.hips if m.hips and m.hips > 0 else None for m in measurements]
@@ -41,14 +77,14 @@ def stats():
                            labels=labels,
                            calorie_intake=calorie_intake,
                            calorie_burn=calorie_burn,
-                           measurements=measurements,
                            weight_labels=weight_labels,
                            weight_data=weight_data,
                            chest_data=chest_data,
                            waist_data=waist_data,
                            hips_data=hips_data,
                            biceps_data=biceps_data,
-                           today=date.today())
+                           period=period,
+                           today=today)
 
 
 @stats_bp.route('/add-measurement', methods=['POST'])

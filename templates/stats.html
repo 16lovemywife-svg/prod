@@ -5,12 +5,20 @@
 {% block content %}
 <h1 style="color: var(--neon-blue);">📈 Итоги и прогресс</h1>
 
+<!-- Переключатель периода -->
+<div class="period-selector mb-4" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+    <a href="{{ url_for('stats.stats', period='7') }}" class="btn btn-sm {% if period == '7' %}btn-primary{% else %}btn-outline{% endif %}">7 дней</a>
+    <a href="{{ url_for('stats.stats', period='30') }}" class="btn btn-sm {% if period == '30' %}btn-primary{% else %}btn-outline{% endif %}">30 дней</a>
+    <a href="{{ url_for('stats.stats', period='90') }}" class="btn btn-sm {% if period == '90' %}btn-primary{% else %}btn-outline{% endif %}">90 дней</a>
+    <a href="{{ url_for('stats.stats', period='all') }}" class="btn btn-sm {% if period == 'all' %}btn-primary{% else %}btn-outline{% endif %}">Всё время</a>
+</div>
+
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <div class="card mb-4">
     <div class="card-body">
-        <h3>Калории за неделю</h3>
+        <h3>Калории за период</h3>
         <canvas id="weeklyCaloriesChart" width="400" height="200"></canvas>
     </div>
 </div>
@@ -27,7 +35,7 @@
 <script>
 // Графики через Chart.js
 document.addEventListener('DOMContentLoaded', function() {
-    // Калории за неделю
+    // Калории за период
     const ctx1 = document.getElementById('weeklyCaloriesChart').getContext('2d');
     new Chart(ctx1, {
         type: 'bar',
@@ -37,6 +45,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 { label: 'Потреблено', data: {{ calorie_intake|tojson }}, backgroundColor: '#ff6b35' },
                 { label: 'Сожжено', data: {{ calorie_burn|tojson }}, backgroundColor: '#39ff14' }
             ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { title: { display: true, text: 'Дата' } },
+                y: { title: { display: true, text: 'Калории' } }
+            }
         }
     });
 
@@ -99,21 +114,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 'y-weight': {
                     type: 'linear',
                     position: 'left',
-                    title: {
-                        display: true,
-                        text: 'Вес (кг)'
-                    }
+                    title: { display: true, text: 'Вес (кг)' }
                 },
                 'y-measure': {
                     type: 'linear',
                     position: 'right',
-                    title: {
-                        display: true,
-                        text: 'Обхваты (см)'
-                    },
-                    grid: {
-                        drawOnChartArea: false
-                    }
+                    title: { display: true, text: 'Обхваты (см)' },
+                    grid: { drawOnChartArea: false }
                 }
             }
         }

@@ -248,6 +248,29 @@ class ActivityLog(db.Model):
             'notes': self.notes
         }
 
+class ActivityGoal(db.Model):
+    """Дневные цели по активности"""
+    id = db.Column(db.Integer, primary_key=True)
+    calories = db.Column(db.Float, default=500.0)            # ккал в день
+    duration_minutes = db.Column(db.Integer, default=60)     # минут в день
+
+class ActivityType(db.Model):
+    """Пользовательские типы активности с MET-значениями"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    met_low = db.Column(db.Float, default=2.0)
+    met_medium = db.Column(db.Float, default=4.0)
+    met_high = db.Column(db.Float, default=6.0)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'met_low': self.met_low,
+            'met_medium': self.met_medium,
+            'met_high': self.met_high
+        }
+
 class BodyMeasurement(db.Model):
     """Замеры тела пользователя"""
     id = db.Column(db.Integer, primary_key=True)

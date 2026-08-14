@@ -45,6 +45,7 @@ def diary():
     total_fats = sum(meal.total_fats() for meal in meals)
     total_carbs = sum(meal.total_carbs() for meal in meals)
 
+    activities = ActivityLog.query.filter(ActivityLog.date == diary_date).all()
     burned_calories = sum(a.calories_burned for a in activities)
     balance = total_calories - burned_calories
 

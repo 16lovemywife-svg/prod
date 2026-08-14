@@ -72,8 +72,56 @@
         </div>
     </div>
 
-    <!-- Правая колонка: замеры тела -->
+    <!-- Правая колонка: цели, свои типы, замеры -->
     <div class="workouts-side">
+        <!-- Цели по активности -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4>🎯 Цели на день</h4>
+                    <button class="btn btn-sm btn-outline" onclick="showGoalModal()">⚙️</button>
+                </div>
+
+                <div class="macro-bar mt-3">
+                    <div class="macro-bar__label">Калории</div>
+                    <div class="macro-bar__track">
+                        <div class="macro-bar__fill" style="width: {% if activity_goal.calories > 0 %}{{ (burned_calories / activity_goal.calories * 100) if burned_calories <= activity_goal.calories else 100 }}{% else %}0{% endif %}%;"></div>
+                    </div>
+                    <div class="macro-bar__values">{{ burned_calories|round(1) }} / {{ activity_goal.calories }} ккал</div>
+                </div>
+
+                <div class="macro-bar">
+                    <div class="macro-bar__label">Длительность</div>
+                    <div class="macro-bar__track">
+                        <div class="macro-bar__fill" style="width: {% if activity_goal.duration_minutes > 0 %}{{ (total_duration / activity_goal.duration_minutes * 100) if total_duration <= activity_goal.duration_minutes else 100 }}{% else %}0{% endif %}%;"></div>
+                    </div>
+                    <div class="macro-bar__values">{{ total_duration }} / {{ activity_goal.duration_minutes }} мин</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Пользовательские типы активности -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4>🏷️ Свои типы активности</h4>
+                    <button class="btn btn-sm btn-outline" onclick="showAddTypeModal()">+</button>
+                </div>
+                <ul class="list-unstyled mt-2">
+                    {% for ctype in custom_activity_types %}
+                    <li class="d-flex justify-content-between align-items-center py-1" style="border-bottom:1px solid var(--border-color);">
+                        <span>{{ ctype.name }}</span>
+                        <span class="text-muted small">MET: {{ ctype.met_low }}/{{ ctype.met_medium }}/{{ ctype.met_high }}</span>
+                        <form method="POST" action="{{ url_for('workouts.delete_activity_type', type_id=ctype.id) }}" onsubmit="return confirm('Удалить тип?')">
+                            <button type="submit" class="btn btn-sm btn-danger">✕</button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Замеры тела -->
         <div class="card">
             <div class="card-body">
                 <h4>📏 Замеры за {{ date.strftime('%d.%m.%Y') }}</h4>
@@ -123,16 +171,10 @@
         <input type="hidden" name="date" value="{{ date.isoformat() }}">
         <div class="form-group">
             <label>Тип активности</label>
-            <select name="activity_type" class="form-control">
-                <option value="бег">Бег</option>
-                <option value="ходьба">Ходьба</option>
-                <option value="плавание">Плавание</option>
-                <option value="велосипед">Велосипед</option>
-                <option value="силовая тренировка">Силовая тренировка</option>
-                <option value="йога">Йога</option>
-                <option value="танцы">Танцы</option>
-                <option value="аэробика">Аэробика</option>
-                <option value="другое">Другое</option>
+            <select name="activity_type" class="form-control" required>
+                {% for atype in all_activity_types %}
+                <option value="{{ atype.name }}">{{ atype.name }}{% if atype.is_custom %} (свой){% endif %}</option>
+                {% endfor %}
             </select>
         </div>
         <div class="form-group">
@@ -170,16 +212,10 @@
     <form method="POST" id="editActivityForm">
         <div class="form-group">
             <label>Тип активности</label>
-            <select name="activity_type" id="edit-activity-type" class="form-control">
-                <option value="бег">Бег</option>
-                <option value="ходьба">Ходьба</option>
-                <option value="плавание">Плавание</option>
-                <option value="велосипед">Велосипед</option>
-                <option value="силовая тренировка">Силовая тренировка</option>
-                <option value="йога">Йога</option>
-                <option value="танцы">Танцы</option>
-                <option value="аэробика">Аэробика</option>
-                <option value="другое">Другое</option>
+            <select name="activity_type" id="edit-activity-type" class="form-control" required>
+                {% for atype in all_activity_types %}
+                <option value="{{ atype.name }}">{{ atype.name }}{% if atype.is_custom %} (свой){% endif %}</option>
+                {% endfor %}
             </select>
         </div>
         <div class="form-group">
@@ -240,6 +276,50 @@
         <button type="button" class="btn btn-outline" onclick="hideAddMeasurementModal()">Отмена</button>
     </form>
 </div>
+
+<!-- Модальное окно настройки целей -->
+<div id="goalModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h3>Цели по активности</h3>
+    <form method="POST" action="{{ url_for('workouts.update_goal') }}">
+        <div class="form-group">
+            <label>Сожжённые калории (ккал в день)</label>
+            <input type="number" name="calories" value="{{ activity_goal.calories }}" step="0.1" min="0" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Длительность (минут в день)</label>
+            <input type="number" name="duration_minutes" value="{{ activity_goal.duration_minutes }}" min="0" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-outline" onclick="hideGoalModal()">Отмена</button>
+    </form>
+</div>
+
+<!-- Модальное окно добавления типа активности -->
+<div id="addTypeModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h3>Новый тип активности</h3>
+    <form method="POST" action="{{ url_for('workouts.add_activity_type') }}">
+        <div class="form-group">
+            <label>Название</label>
+            <input type="text" name="name" class="form-control" required>
+        </div>
+        <div class="row">
+            <div class="col form-group">
+                <label>MET низкая</label>
+                <input type="number" name="met_low" value="2.0" step="0.1" class="form-control">
+            </div>
+            <div class="col form-group">
+                <label>MET средняя</label>
+                <input type="number" name="met_medium" value="4.0" step="0.1" class="form-control">
+            </div>
+            <div class="col form-group">
+                <label>MET высокая</label>
+                <input type="number" name="met_high" value="6.0" step="0.1" class="form-control">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-outline" onclick="hideAddTypeModal()">Отмена</button>
+    </form>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -261,5 +341,11 @@ function hideEditActivityModal() { document.getElementById('editActivityModal').
 
 function showAddMeasurementModal() { document.getElementById('addMeasurementModal').style.display = 'block'; }
 function hideAddMeasurementModal() { document.getElementById('addMeasurementModal').style.display = 'none'; }
+
+function showGoalModal() { document.getElementById('goalModal').style.display = 'block'; }
+function hideGoalModal() { document.getElementById('goalModal').style.display = 'none'; }
+
+function showAddTypeModal() { document.getElementById('addTypeModal').style.display = 'block'; }
+function hideAddTypeModal() { document.getElementById('addTypeModal').style.display = 'none'; }
 </script>
 {% endblock %}
