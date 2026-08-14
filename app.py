@@ -3,7 +3,6 @@ from config import Config
 from database import db
 import os
 
-
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -16,7 +15,9 @@ def create_app():
     from routes.recipes import recipes_bp
     from routes.products import products_bp
     from routes.api import api_bp
+    from routes.diary import diary_bp
 
+    app.register_blueprint(diary_bp, url_prefix='/diary')
     app.register_blueprint(main_bp)
     app.register_blueprint(recipes_bp, url_prefix='/recipes')
     app.register_blueprint(products_bp, url_prefix='/products')
@@ -30,12 +31,15 @@ def create_app():
     # Контекстный процессор для шаблонов
     @app.context_processor
     def utility_processor():
-        from models import Product
+        from models import Product, Recipe
         return {
-            'all_products': Product.query.order_by(Product.name).all()
+            'all_products': Product.query.order_by(Product.name).all(),
+            'all_recipes': Recipe.query.order_by(Recipe.title).all()
+
         }
 
     return app
+
 
 
 if __name__ == '__main__':

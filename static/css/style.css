@@ -1391,3 +1391,89 @@ tr:hover {
     border-color: var(--neon-blue);
     color: var(--neon-blue);
 }
+
+/* Дневник: двухколоночная сетка */
+.diary-layout {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 2rem;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .diary-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Кольцевой прогресс */
+.calorie-ring {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+.calorie-ring svg {
+    display: block;
+    margin: 0 auto;
+}
+.calorie-ring-label {
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* Линейные прогресс-бары */
+.macro-bars {
+    margin-top: 1.5rem;
+}
+.macro-bar {
+    margin-bottom: 1rem;
+}
+.macro-bar__label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+}
+.macro-bar__track {
+    height: 10px;
+    background: var(--bg-secondary);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 0.3rem;
+}
+.macro-bar__fill {
+    height: 100%;
+    background: var(--neon-green);
+    border-radius: 5px;
+    transition: width 0.5s ease;
+    /* Если превышает 100%, можно ограничить max-width в шаблоне */
+}
+.macro-bar__values {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+/* Autocomplete */
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.autocomplete-item {
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: background 0.15s;
+}
+.autocomplete-item:hover,
+.autocomplete-item.active {
+    background: rgba(0,212,255,0.1);
+    color: var(--neon-blue);
+}

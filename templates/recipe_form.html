@@ -9,37 +9,37 @@
     {% if is_edit %}✏️ Редактировать рецепт{% else %}➕ Новый рецепт{% endif %}
 </h1>
 
-<form method="POST" enctype="multipart/form-data">
+<form method="POST" enctype="multipart/form-data" id="recipeForm">
     <div class="card mb-4">
         <div class="card-body">
             <h3 style="color: var(--neon-blue);">Основная информация</h3>
 
             <div class="form-group">
                 <label class="form-label">Название рецепта *</label>
-                <input type="text" name="title" class="form-control" 
+                <input type="text" name="title" class="form-control"
                        value="{{ recipe.title if recipe else '' }}" required>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Описание</label>
-                <textarea name="description" class="form-control" 
+                <textarea name="description" class="form-control"
                           rows="3">{{ recipe.description if recipe else '' }}</textarea>
             </div>
 
             <div class="d-flex gap-3 flex-wrap">
                 <div class="form-group" style="flex:1;">
                     <label class="form-label">Время подготовки (мин)</label>
-                    <input type="number" name="prep_time" class="form-control" 
+                    <input type="number" name="prep_time" class="form-control"
                            value="{{ recipe.prep_time if recipe else 0 }}" min="0">
                 </div>
                 <div class="form-group" style="flex:1;">
                     <label class="form-label">Время готовки (мин)</label>
-                    <input type="number" name="cook_time" class="form-control" 
+                    <input type="number" name="cook_time" class="form-control"
                            value="{{ recipe.cook_time if recipe else 0 }}" min="0">
                 </div>
                 <div class="form-group" style="flex:1;">
                     <label class="form-label">Количество порций</label>
-                    <input type="number" name="default_portions" class="form-control" 
+                    <input type="number" name="default_portions" class="form-control"
                            value="{{ recipe.default_portions if recipe else 1 }}" min="1">
                 </div>
             </div>
@@ -61,8 +61,8 @@
                 </div>
                 <div class="form-group" style="flex:2;">
                     <label class="form-label">Теги (через запятую)</label>
-                    <input type="text" name="tags" class="form-control" 
-                           value="{{ recipe.tags if recipe else '' }}" 
+                    <input type="text" name="tags" class="form-control"
+                           value="{{ recipe.tags if recipe else '' }}"
                            placeholder="завтрак, ПП, салат">
                 </div>
             </div>
@@ -89,20 +89,15 @@
                 </button>
             </div>
             <div id="ingredients-container">
-                {% if recipe and recipe.ingredients %}
+                {% if is_edit and recipe.ingredients %}
                     {% for ing in recipe.ingredients %}
                     <div class="ingredient-row d-flex gap-2 align-items-center mb-2">
-                        <select name="ingredient_product[]" class="form-control" style="flex:2;" required>
-                            <option value="">Выберите продукт...</option>
-                            {% for product in products %}
-                            <option value="{{ product.id }}" 
-                                    {% if ing.product_id == product.id %}selected{% endif %}>
-                                {{ product.name }} ({{ product.calories }} ккал/100г)
-                            </option>
-                            {% endfor %}
-                        </select>
-                        <input type="number" name="ingredient_quantity[]" class="form-control" 
-                               style="flex:1;" placeholder="Кол-во" step="0.1" min="0" 
+                        <input type="text" class="form-control autocomplete-product" style="flex:2;"
+                               placeholder="Начните вводить продукт..."
+                               data-product-id="{{ ing.product_id }}"
+                               value="{{ ing.product.name if ing.product else '' }}">
+                        <input type="number" name="ingredient_quantity[]" class="form-control"
+                               style="flex:1;" placeholder="Кол-во" step="0.1" min="0"
                                value="{{ ing.quantity }}" required>
                         <select name="ingredient_unit[]" class="form-control" style="flex:0.5;">
                             <option value="г" {% if ing.unit == 'г' %}selected{% endif %}>г</option>
@@ -111,21 +106,15 @@
                             <option value="ст.л." {% if ing.unit == 'ст.л.' %}selected{% endif %}>ст.л.</option>
                             <option value="ч.л." {% if ing.unit == 'ч.л.' %}selected{% endif %}>ч.л.</option>
                         </select>
-                        <button type="button" class="btn btn-danger btn-sm" 
+                        <button type="button" class="btn btn-danger btn-sm"
                                 onclick="this.closest('.ingredient-row').remove()">✕</button>
                     </div>
                     {% endfor %}
                 {% else %}
                 <div class="ingredient-row d-flex gap-2 align-items-center mb-2">
-                    <select name="ingredient_product[]" class="form-control" style="flex:2;" required>
-                        <option value="">Выберите продукт...</option>
-                        {% for product in products %}
-                        <option value="{{ product.id }}">
-                            {{ product.name }} ({{ product.calories }} ккал/100г)
-                        </option>
-                        {% endfor %}
-                    </select>
-                    <input type="number" name="ingredient_quantity[]" class="form-control" 
+                    <input type="text" class="form-control autocomplete-product" style="flex:2;"
+                           placeholder="Начните вводить продукт...">
+                    <input type="number" name="ingredient_quantity[]" class="form-control"
                            style="flex:1;" placeholder="Кол-во" step="0.1" min="0" required>
                     <select name="ingredient_unit[]" class="form-control" style="flex:0.5;">
                         <option value="г">г</option>
@@ -134,7 +123,7 @@
                         <option value="ст.л.">ст.л.</option>
                         <option value="ч.л.">ч.л.</option>
                     </select>
-                    <button type="button" class="btn btn-danger btn-sm" 
+                    <button type="button" class="btn btn-danger btn-sm"
                             onclick="this.closest('.ingredient-row').remove()">✕</button>
                 </div>
                 {% endif %}
@@ -142,55 +131,36 @@
         </div>
     </div>
 
-   <!-- Шаги приготовления -->
-<div class="card mb-4">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 style="color: var(--neon-pink); margin:0;">📝 Шаги приготовления</h3>
-            <button type="button" class="btn btn-success btn-sm" onclick="addStepRow()">
-                ➕ Добавить шаг
-            </button>
-        </div>
-        <div id="steps-container">
-            {% if is_edit and existing_steps %}
-                {% for step in existing_steps %}
-                <div class="step-row mb-3 p-3" style="background: var(--bg-secondary); border-radius: var(--radius-md);">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <strong style="color: var(--neon-blue);">Шаг {{ step.step_number }}</strong>
-                        <button type="button" class="btn btn-danger btn-sm"
-                                onclick="this.closest('.step-row').remove(); updateStepNumbers();">✕</button>
+    <!-- Шаги приготовления -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 style="color: var(--neon-pink); margin:0;">📝 Шаги приготовления</h3>
+                <button type="button" class="btn btn-success btn-sm" onclick="addStepRow()">
+                    ➕ Добавить шаг
+                </button>
+            </div>
+            <div id="steps-container">
+                {% if is_edit and existing_steps %}
+                    {% for step in existing_steps %}
+                    <div class="step-row mb-3 p-3" style="background: var(--bg-secondary); border-radius: var(--radius-md);">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong style="color: var(--neon-blue);">Шаг {{ step.step_number }}</strong>
+                            <button type="button" class="btn btn-danger btn-sm"
+                                    onclick="this.closest('.step-row').remove(); updateStepNumbers();">✕</button>
+                        </div>
+                        <div class="form-group">
+                            <textarea name="step_text[]" class="form-control"
+                                      placeholder="Опишите шаг приготовления..." rows="3">{{ step.instruction }}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">⏱ Таймер (минуты, 0 = без таймера)</label>
+                            <input type="number" name="step_time[]" class="form-control"
+                                   value="{{ step.timer_minutes }}" min="0" style="width:150px;">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <textarea name="step_text[]" class="form-control"
-                                  placeholder="Опишите шаг приготовления..." rows="3">{{ step.instruction }}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">⏱ Таймер (минуты, 0 = без таймера)</label>
-                        <input type="number" name="step_time[]" class="form-control"
-                               value="{{ step.timer_minutes }}" min="0" style="width:150px;">
-                    </div>
-                </div>
-                {% endfor %}
-            {% elif is_edit %}
-                <!-- Редактирование, но шагов нет — показываем один пустой -->
-                <div class="step-row mb-3 p-3" style="background: var(--bg-secondary); border-radius: var(--radius-md);">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <strong style="color: var(--neon-blue);">Шаг 1</strong>
-                        <button type="button" class="btn btn-danger btn-sm"
-                                onclick="this.closest('.step-row').remove(); updateStepNumbers();">✕</button>
-                    </div>
-                    <div class="form-group">
-                        <textarea name="step_text[]" class="form-control"
-                                  placeholder="Опишите шаг приготовления..." rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">⏱ Таймер (минуты)</label>
-                        <input type="number" name="step_time[]" class="form-control"
-                               value="0" min="0" style="width:150px;">
-                    </div>
-                </div>
-            {% else %}
-                <!-- Новый рецепт — один пустой шаг -->
+                    {% endfor %}
+                {% else %}
                 <div class="step-row mb-3 p-3" style="background: var(--bg-secondary); border-radius: var(--radius-md);">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <strong style="color: var(--neon-blue);">Шаг 1</strong>
@@ -207,14 +177,125 @@
                                value="0" min="0" style="width:150px;">
                     </div>
                 </div>
-            {% endif %}
+                {% endif %}
+            </div>
         </div>
     </div>
-</div>
 
     <button type="submit" class="btn btn-primary btn-lg btn-block">
         {% if is_edit %}💾 Сохранить изменения{% else %}✅ Создать рецепт{% endif %}
     </button>
 </form>
 
+<script>
+// ===== Добавление ингредиента с autocomplete =====
+function addIngredientRow(productId = '', productName = '', quantity = '', unit = 'г') {
+    const container = document.getElementById('ingredients-container');
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'ingredient-row d-flex gap-2 align-items-center mb-2';
+    row.innerHTML = `
+        <input type="text" class="form-control autocomplete-product" style="flex:2;"
+               placeholder="Начните вводить продукт...">
+        <input type="number" name="ingredient_quantity[]" class="form-control"
+               style="flex:1;" step="0.1" min="0" value="${quantity}" required>
+        <select name="ingredient_unit[]" class="form-control" style="flex:0.5;">
+            <option value="г" ${unit === 'г' ? 'selected' : ''}>г</option>
+            <option value="мл" ${unit === 'мл' ? 'selected' : ''}>мл</option>
+            <option value="шт" ${unit === 'шт' ? 'selected' : ''}>шт</option>
+            <option value="ст.л." ${unit === 'ст.л.' ? 'selected' : ''}>ст.л.</option>
+            <option value="ч.л." ${unit === 'ч.л.' ? 'selected' : ''}>ч.л.</option>
+        </select>
+        <button type="button" class="btn btn-danger btn-sm"
+                onclick="this.closest('.ingredient-row').remove()">✕</button>
+    `;
+
+    container.appendChild(row);
+
+    // Инициализация autocomplete для нового поля
+    const input = row.querySelector('.autocomplete-product');
+    if (typeof Autocomplete !== 'undefined') {
+        new Autocomplete(input, {
+            apiUrl: '/api/search-products',
+            placeholder: 'Поиск продукта...',
+            onSelect: function(item) {
+                input.dataset.productId = item.id;
+            }
+        });
+    }
+
+    if (productId && productName) {
+        input.value = productName;
+        input.dataset.productId = productId;
+    }
+}
+
+// ===== Добавление шага =====
+function addStepRow(instruction = '', timerMinutes = 0) {
+    const container = document.getElementById('steps-container');
+    if (!container) return;
+
+    const index = container.children.length + 1;
+    const row = document.createElement('div');
+    row.className = 'step-row mb-3 p-3';
+    row.style.cssText = 'background: var(--bg-secondary); border-radius: var(--radius-md);';
+    row.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <strong style="color: var(--neon-blue);">Шаг ${index}</strong>
+            <button type="button" class="btn btn-danger btn-sm"
+                    onclick="this.closest('.step-row').remove(); updateStepNumbers();">✕</button>
+        </div>
+        <div class="form-group">
+            <textarea name="step_text[]" class="form-control"
+                      placeholder="Опишите шаг приготовления..." rows="3">${instruction}</textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label">⏱ Таймер (минуты, 0 = без таймера)</label>
+            <input type="number" name="step_time[]" class="form-control"
+                   value="${timerMinutes}" min="0" style="width:150px;">
+        </div>
+    `;
+
+    container.appendChild(row);
+}
+
+// ===== Обновление номеров шагов =====
+function updateStepNumbers() {
+    const container = document.getElementById('steps-container');
+    if (!container) return;
+    const rows = container.querySelectorAll('.step-row');
+    rows.forEach((row, i) => {
+        const strong = row.querySelector('strong');
+        if (strong) strong.textContent = `Шаг ${i + 1}`;
+    });
+}
+
+// ===== Инициализация autocomplete для существующих полей =====
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.autocomplete-product').forEach(input => {
+        if (typeof Autocomplete !== 'undefined') {
+            new Autocomplete(input, {
+                apiUrl: '/api/search-products',
+                placeholder: 'Поиск продукта...',
+                onSelect: function(item) {
+                    input.dataset.productId = item.id;
+                }
+            });
+        }
+    });
+
+    // При отправке формы собираем productId в скрытые поля
+    document.getElementById('recipeForm').addEventListener('submit', function(e) {
+        const productInputs = document.querySelectorAll('.autocomplete-product');
+        productInputs.forEach(input => {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'ingredient_product[]';
+            hidden.value = input.dataset.productId || '';
+            this.appendChild(hidden);
+        });
+    });
+});
+</script>
 {% endblock %}
