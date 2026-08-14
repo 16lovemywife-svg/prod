@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models import ActivityLog, UserProfile, db
+from models import ActivityLog, UserProfile, BodyMeasurement, db
 from services.activity import calculate_calories_burned
 from datetime import datetime, date, timedelta
 
@@ -27,6 +27,11 @@ def workouts():
     burned_calories = sum(a.calories_burned for a in activities)
     total_duration = sum(a.duration_minutes for a in activities)
 
+    # Получаем последний замер за выбранную дату
+    measurement = BodyMeasurement.query.filter(
+        BodyMeasurement.date == workout_date
+    ).order_by(BodyMeasurement.created_at.desc()).first()
+
     return render_template('workouts.html',
                            date=workout_date,
                            prev_date=prev_date,
@@ -34,8 +39,45 @@ def workouts():
                            activities=activities,
                            profile=user_profile,
                            burned_calories=burned_calories,
-                           total_duration=total_duration)
+                           total_duration=total_duration,
+                           measurement=measurement,
+                           today=date.today())
 
+
+
+@workouts_bp.route('/add-measurement', methods=['POST'])
+def add_measurement():
+    """Добавление нового замера тела"""
+    date_str = request.form.get('date')
+    try:
+        measurement_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        measurement_date = date.today()
+
+    measurement = BodyMeasurement(
+        date=measurement_date,
+        weight=float(request.form.get('weight', 0)),
+        chest=float(request.form.get('chest', 0)),
+        waist=float(request.form.get('waist', 0)),
+        hips=float(request.form.get('hips', 0)),
+        biceps=float(request.form.get('biceps', 0)),
+        notes=request.form.get('notes', '')
+    )
+    db.session.add(measurement)
+    db.session.commit()
+    flash('Замер добавлен!', 'success')
+    return redirect(url_for('workouts.workouts', date=measurement_date.strftime('%Y-%m-%d')))
+
+
+@workouts_bp.route('/delete-measurement/<int:measurement_id>', methods=['POST'])
+def delete_measurement(measurement_id):
+    """Удаление замера"""
+    measurement = BodyMeasurement.query.get_or_404(measurement_id)
+    measurement_date = measurement.date
+    db.session.delete(measurement)
+    db.session.commit()
+    flash('Замер удалён', 'success')
+    return redirect(url_for('workouts.workouts', date=measurement_date.strftime('%Y-%m-%d')))
 
 @workouts_bp.route('/add', methods=['POST'])
 def add_activity():

@@ -1477,3 +1477,16 @@ tr:hover {
     background: rgba(0,212,255,0.1);
     color: var(--neon-blue);
 }
+
+/* Сетка для страницы тренировок */
+.workouts-layout {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 2rem;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .workouts-layout {
+        grid-template-columns: 1fr;
+    }
+}

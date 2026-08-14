@@ -21,87 +21,10 @@
         <canvas id="weightChart" width="400" height="200"></canvas>
     </div>
 </div>
-
-<div class="card mb-4">
-    <div class="card-body">
-        <h3>Замеры тела</h3>
-        <table class="table table-sm">
-            <thead>
-                <tr>
-                    <th>Дата</th>
-                    <th>Вес</th>
-                    <th>Грудь</th>
-                    <th>Талия</th>
-                    <th>Бёдра</th>
-                    <th>Бицепс</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for m in measurements %}
-                <tr>
-                    <td>{{ m.date.strftime('%d.%m.%Y') }}</td>
-                    <td>{{ m.weight }} кг</td>
-                    <td>{{ m.chest or '—' }} см</td>
-                    <td>{{ m.waist or '—' }} см</td>
-                    <td>{{ m.hips or '—' }} см</td>
-                    <td>{{ m.biceps or '—' }} см</td>
-                    <td>
-                        <form method="POST" action="{{ url_for('stats.delete_measurement', measurement_id=m.id) }}" onsubmit="return confirm('Удалить замер?')">
-                            <button type="submit" class="btn btn-sm btn-danger">✕</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <button class="btn btn-primary" onclick="showAddMeasurementModal()">+ Добавить замер</button>
-    </div>
-</div>
-
-<!-- Модальное окно добавления замера -->
-<div id="addMeasurementModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
-    <h3>Новый замер</h3>
-    <form method="POST" action="{{ url_for('stats.add_measurement') }}">
-        <div class="form-group">
-            <label>Дата</label>
-            <input type="date" name="date" value="{{ today.isoformat() }}" class="form-control" required>
-        </div>
-        <div class="form-group">
-            <label>Вес (кг)</label>
-            <input type="number" name="weight" step="0.1" class="form-control" required>
-        </div>
-        <div class="form-group">
-            <label>Грудь (см)</label>
-            <input type="number" name="chest" step="0.1" class="form-control">
-        </div>
-        <div class="form-group">
-            <label>Талия (см)</label>
-            <input type="number" name="waist" step="0.1" class="form-control">
-        </div>
-        <div class="form-group">
-            <label>Бёдра (см)</label>
-            <input type="number" name="hips" step="0.1" class="form-control">
-        </div>
-        <div class="form-group">
-            <label>Бицепс (см)</label>
-            <input type="number" name="biceps" step="0.1" class="form-control">
-        </div>
-        <div class="form-group">
-            <label>Заметка</label>
-            <input type="text" name="notes" class="form-control">
-        </div>
-        <button type="submit" class="btn btn-primary">Сохранить</button>
-        <button type="button" class="btn btn-outline" onclick="hideAddMeasurementModal()">Отмена</button>
-    </form>
-</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function showAddMeasurementModal() { document.getElementById('addMeasurementModal').style.display = 'block'; }
-function hideAddMeasurementModal() { document.getElementById('addMeasurementModal').style.display = 'none'; }
-
 // Графики через Chart.js
 document.addEventListener('DOMContentLoaded', function() {
     // Калории за неделю

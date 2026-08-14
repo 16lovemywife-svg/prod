@@ -16,59 +16,103 @@
     <a href="{{ url_for('workouts.workouts') }}" class="btn btn-sm btn-outline">Сегодня</a>
 </div>
 
-<!-- Итог за день -->
-<div class="card mb-4">
-    <div class="card-body d-flex gap-4 flex-wrap">
-        <div>
-            <span class="badge badge-primary">Сожжено: {{ burned_calories|round(1) }} ккал</span>
+<div class="workouts-layout">
+    <!-- Левая колонка: активности -->
+    <div class="workouts-main">
+        <!-- Итог за день -->
+        <div class="card mb-4">
+            <div class="card-body d-flex gap-4 flex-wrap">
+                <div><span class="badge badge-primary">Сожжено: {{ burned_calories|round(1) }} ккал</span></div>
+                <div><span class="badge badge-success">Длительность: {{ total_duration }} мин</span></div>
+            </div>
         </div>
-        <div>
-            <span class="badge badge-success">Длительность: {{ total_duration }} мин</span>
+
+        <!-- Кнопка добавления активности -->
+        <div class="text-center mb-4">
+            <button class="btn btn-primary" onclick="showAddActivityModal()">+ Добавить активность</button>
+        </div>
+
+        <!-- Список активностей -->
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Тип</th>
+                            <th>Длительность</th>
+                            <th>Интенсивность</th>
+                            <th>Калории</th>
+                            <th>Заметка</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in activities %}
+                        <tr>
+                            <td>{{ activity.activity_type }}</td>
+                            <td>{{ activity.duration_minutes }} мин</td>
+                            <td>
+                                {% if activity.intensity == 'low' %}Низкая
+                                {% elif activity.intensity == 'medium' %}Средняя
+                                {% else %}Высокая{% endif %}
+                            </td>
+                            <td>{{ activity.calories_burned|round(1) }}</td>
+                            <td>{{ activity.notes or '—' }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline" onclick="showEditActivityModal({{ activity.id }}, '{{ activity.activity_type }}', {{ activity.duration_minutes }}, '{{ activity.intensity }}', {{ activity.calories_burned }}, '{{ activity.notes }}')">✏️</button>
+                                <form method="POST" action="{{ url_for('workouts.delete_activity', activity_id=activity.id) }}" onsubmit="return confirm('Удалить активность?')">
+                                    <button type="submit" class="btn btn-sm btn-danger">✕</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- Кнопка добавления -->
-<div class="text-center mb-4">
-    <button class="btn btn-primary" onclick="showAddActivityModal()">+ Добавить активность</button>
-</div>
+    <!-- Правая колонка: замеры тела -->
+    <div class="workouts-side">
+        <div class="card">
+            <div class="card-body">
+                <h4>📏 Замеры за {{ date.strftime('%d.%m.%Y') }}</h4>
 
-<!-- Список активностей -->
-<div class="card">
-    <div class="card-body">
-        <table class="table table-sm">
-            <thead>
-                <tr>
-                    <th>Тип</th>
-                    <th>Длительность</th>
-                    <th>Интенсивность</th>
-                    <th>Калории</th>
-                    <th>Заметка</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for activity in activities %}
-                <tr>
-                    <td>{{ activity.activity_type }}</td>
-                    <td>{{ activity.duration_minutes }} мин</td>
-                    <td>
-                        {% if activity.intensity == 'low' %}Низкая
-                        {% elif activity.intensity == 'medium' %}Средняя
-                        {% else %}Высокая{% endif %}
-                    </td>
-                    <td>{{ activity.calories_burned|round(1) }}</td>
-                    <td>{{ activity.notes or '—' }}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline" onclick="showEditActivityModal({{ activity.id }}, '{{ activity.activity_type }}', {{ activity.duration_minutes }}, '{{ activity.intensity }}', {{ activity.calories_burned }}, '{{ activity.notes }}')">✏️</button>
-                        <form method="POST" action="{{ url_for('workouts.delete_activity', activity_id=activity.id) }}" onsubmit="return confirm('Удалить активность?')">
-                            <button type="submit" class="btn btn-sm btn-danger">✕</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                {% if measurement %}
+                <div class="measurement-list mt-3">
+                    <div class="d-flex justify-content-between py-2" style="border-bottom:1px solid var(--border-color);">
+                        <span>Вес</span>
+                        <strong>{{ measurement.weight }} кг</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2" style="border-bottom:1px solid var(--border-color);">
+                        <span>Грудь</span>
+                        <strong>{{ measurement.chest or '—' }} см</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2" style="border-bottom:1px solid var(--border-color);">
+                        <span>Талия</span>
+                        <strong>{{ measurement.waist or '—' }} см</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2" style="border-bottom:1px solid var(--border-color);">
+                        <span>Бёдра</span>
+                        <strong>{{ measurement.hips or '—' }} см</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2" style="border-bottom:1px solid var(--border-color);">
+                        <span>Бицепс</span>
+                        <strong>{{ measurement.biceps or '—' }} см</strong>
+                    </div>
+                </div>
+                <div class="mt-2 d-flex justify-content-end">
+                    <form method="POST" action="{{ url_for('workouts.delete_measurement', measurement_id=measurement.id) }}" onsubmit="return confirm('Удалить замер?')">
+                        <button type="submit" class="btn btn-sm btn-danger">🗑 Удалить</button>
+                    </form>
+                </div>
+                {% else %}
+                <p class="mt-3" style="color: var(--text-muted);">Нет замеров за эту дату</p>
+                {% endif %}
+
+                <button class="btn btn-sm btn-primary mt-2" onclick="showAddMeasurementModal()">+ Добавить замер</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -162,10 +206,45 @@
         <button type="button" class="btn btn-outline" onclick="hideEditActivityModal()">Отмена</button>
     </form>
 </div>
+
+<!-- Модальное окно добавления замера -->
+<div id="addMeasurementModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h3>Новый замер</h3>
+    <form method="POST" action="{{ url_for('workouts.add_measurement') }}">
+        <input type="hidden" name="date" value="{{ date.isoformat() }}">
+        <div class="form-group">
+            <label>Вес (кг)</label>
+            <input type="number" name="weight" step="0.1" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Грудь (см)</label>
+            <input type="number" name="chest" step="0.1" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Талия (см)</label>
+            <input type="number" name="waist" step="0.1" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Бёдра (см)</label>
+            <input type="number" name="hips" step="0.1" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Бицепс (см)</label>
+            <input type="number" name="biceps" step="0.1" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Заметка</label>
+            <input type="text" name="notes" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-outline" onclick="hideAddMeasurementModal()">Отмена</button>
+    </form>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// Показать/скрыть модальные окна
 function showAddActivityModal() { document.getElementById('addActivityModal').style.display = 'block'; }
 function hideAddActivityModal() { document.getElementById('addActivityModal').style.display = 'none'; }
 
@@ -179,5 +258,8 @@ function showEditActivityModal(id, type, duration, intensity, calories, notes) {
     document.getElementById('editActivityModal').style.display = 'block';
 }
 function hideEditActivityModal() { document.getElementById('editActivityModal').style.display = 'none'; }
+
+function showAddMeasurementModal() { document.getElementById('addMeasurementModal').style.display = 'block'; }
+function hideAddMeasurementModal() { document.getElementById('addMeasurementModal').style.display = 'none'; }
 </script>
 {% endblock %}
