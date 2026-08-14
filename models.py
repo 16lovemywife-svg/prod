@@ -161,38 +161,49 @@ class MealEntry(db.Model):
     recipe = db.relationship('Recipe', lazy=True)
     product = db.relationship('Product', lazy=True)
 
-    def calories(self):
+    def _recipe_nutrition_per_gram(self):
+        """Возвращает КБЖУ на 1 грамм готового блюда"""
         from services.nutrition import calculate_recipe_nutrition
+        if not self.recipe:
+            return {'calories': 0, 'proteins': 0, 'fats': 0, 'carbs': 0}
+        nutrition = calculate_recipe_nutrition(self.recipe, 1)
+        total = nutrition['total']
+        total_weight = total['weight'] if total['weight'] > 0 else 1
+        return {
+            'calories': total['calories'] / total_weight,
+            'proteins': total['proteins'] / total_weight,
+            'fats': total['fats'] / total_weight,
+            'carbs': total['carbs'] / total_weight,
+        }
+
+    def calories(self):
         if self.entry_type == 'recipe' and self.recipe:
-            nutrition = calculate_recipe_nutrition(self.recipe, self.quantity)
-            return nutrition['total']['calories']
+            per_gram = self._recipe_nutrition_per_gram()
+            return per_gram['calories'] * self.quantity
         elif self.entry_type == 'product' and self.product:
             return (self.product.calories * self.quantity) / 100
         return 0
 
     def proteins(self):
-        from services.nutrition import calculate_recipe_nutrition
         if self.entry_type == 'recipe' and self.recipe:
-            nutrition = calculate_recipe_nutrition(self.recipe, self.quantity)
-            return nutrition['total']['proteins']
+            per_gram = self._recipe_nutrition_per_gram()
+            return per_gram['proteins'] * self.quantity
         elif self.entry_type == 'product' and self.product:
             return (self.product.proteins * self.quantity) / 100
         return 0
 
     def fats(self):
-        from services.nutrition import calculate_recipe_nutrition
         if self.entry_type == 'recipe' and self.recipe:
-            nutrition = calculate_recipe_nutrition(self.recipe, self.quantity)
-            return nutrition['total']['fats']
+            per_gram = self._recipe_nutrition_per_gram()
+            return per_gram['fats'] * self.quantity
         elif self.entry_type == 'product' and self.product:
             return (self.product.fats * self.quantity) / 100
         return 0
 
     def carbs(self):
-        from services.nutrition import calculate_recipe_nutrition
         if self.entry_type == 'recipe' and self.recipe:
-            nutrition = calculate_recipe_nutrition(self.recipe, self.quantity)
-            return nutrition['total']['carbs']
+            per_gram = self._recipe_nutrition_per_gram()
+            return per_gram['carbs'] * self.quantity
         elif self.entry_type == 'product' and self.product:
             return (self.product.carbs * self.quantity) / 100
         return 0

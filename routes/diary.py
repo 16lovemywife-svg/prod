@@ -9,9 +9,52 @@ from datetime import datetime, date, time, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from models import MealRecord, MealEntry, Recipe, Product, DietGoal, ActivityLog, UserProfile, db
 from services.activity import calculate_calories_burned
+from models import Recipe
+from datetime import datetime, date, timedelta
+
 
 diary_bp = Blueprint('diary', __name__)
 
+
+@diary_bp.route('/add-recipe-to-meal', methods=['POST'])
+def add_recipe_to_meal():
+    recipe_id = int(request.form.get('recipe_id'))
+    meal_type = request.form.get('meal_type', 'завтрак')
+    date_str = request.form.get('date')
+    time_str = request.form.get('time')
+    weight_grams = float(request.form.get('weight_grams', 100))  # теперь граммы
+
+    try:
+        meal_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        meal_date = date.today()
+
+    try:
+        meal_time = datetime.strptime(time_str, '%H:%M').time()
+    except (ValueError, TypeError):
+        meal_time = datetime.now().time()
+
+    recipe = Recipe.query.get_or_404(recipe_id)
+
+    meal = MealRecord(
+        date=meal_date,
+        meal_type=meal_type,
+        time=meal_time
+    )
+    db.session.add(meal)
+    db.session.flush()
+
+    entry = MealEntry(
+        meal_id=meal.id,
+        entry_type='recipe',
+        recipe_id=recipe.id,
+        quantity=weight_grams  # сохраняем граммы
+    )
+    db.session.add(entry)
+    db.session.commit()
+
+    flash(f'Рецепт "{recipe.title}" добавлен ({weight_grams} г)', 'success')
+    return redirect(url_for('diary.diary', date=date_str))
 
 @diary_bp.route('/')
 def diary():
