@@ -37,7 +37,7 @@
                 </div>
 
                 <div id="entries-{{ meal.id }}" class="section-content mt-2">
-                    <table class="table table-sm">
+                    <table class="table table-sm diary-table">
                         <thead>
                             <tr>
                                 <th>Название</th>
@@ -64,9 +64,11 @@
                                 </td>
                                 <td>{{ 'Рецепт' if entry.entry_type == 'recipe' else 'Продукт' }}</td>
                                 <td>
-                                    <form method="POST" action="{{ url_for('diary.edit_entry', entry_id=entry.id) }}" style="display:inline;">
-                                        <input type="number" name="quantity" value="{{ entry.quantity }}" step="1" min="1" style="width:80px;" class="form-control form-control-sm d-inline">
-                                        <button type="submit" class="btn btn-sm btn-outline">✓</button>
+                                    <form method="POST" action="{{ url_for('diary.edit_entry', entry_id=entry.id) }}" style="margin:0;">
+                                        <div style="display:flex; align-items:center; gap:4px;">
+                                            <input type="number" name="quantity" value="{{ entry.quantity }}" step="1" min="1" style="width:70px;" class="form-control form-control-sm">
+                                            <button type="submit" class="btn btn-sm btn-outline" style="flex-shrink:0;">✓</button>
+                                        </div>
                                     </form>
                                 </td>
                                 <td>{{ entry.calories()|round(1) }}</td>

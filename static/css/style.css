@@ -1490,3 +1490,72 @@ tr:hover {
         grid-template-columns: 1fr;
     }
 }
+/* Фиксированная таблица дневника */
+.diary-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.diary-table th,
+.diary-table td {
+    padding: 0.5rem 0.75rem;
+    vertical-align: middle;
+    word-wrap: break-word;
+    text-align: left;
+}
+
+/* Столбец действий остаётся по центру */
+.diary-table th:last-child,
+.diary-table td:last-child {
+    text-align: center;
+}
+
+/* Выравнивание заголовков */
+.diary-table th {
+    background: var(--bg-secondary);
+    color: var(--neon-blue);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Ширины колонок */
+.diary-table th:nth-child(1), /* Название */
+.diary-table td:nth-child(1) {
+    width: 20%;
+    text-align: left;
+}
+
+.diary-table th:nth-child(2), /* Тип */
+.diary-table td:nth-child(2) {
+    width: 12%;
+}
+
+.diary-table th:nth-child(3), /* Кол-во */
+.diary-table td:nth-child(3) {
+    width: 18%;
+}
+
+.diary-table th:nth-child(4), /* Ккал */
+.diary-table td:nth-child(4) {
+    width: 10%;
+}
+
+.diary-table th:nth-child(5), /* Б */
+.diary-table td:nth-child(5) {
+    width: 8%;
+}
+
+.diary-table th:nth-child(6), /* Ж */
+.diary-table td:nth-child(6) {
+    width: 8%;
+}
+
+.diary-table th:nth-child(7), /* У */
+.diary-table td:nth-child(7) {
+    width: 8%;
+}
+
+.diary-table th:nth-child(8), /* Действия */
+.diary-table td:nth-child(8) {
+    width: 6%;
+}
