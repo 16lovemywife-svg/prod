@@ -4,6 +4,7 @@ from flask import (Blueprint, render_template, request, redirect,
                    url_for, flash, current_app)
 from werkzeug.utils import secure_filename
 from models import Product, RecipeIngredient, db
+from sqlalchemy import func
 
 products_bp = Blueprint('products', __name__)
 
@@ -77,7 +78,7 @@ def product_list():
     query = Product.query
 
     if search_query:
-        query = query.filter(Product.name.ilike(f'%{search_query}%'))
+        query = query.filter(func.lower(Product.name).contains(search_query.lower()))
 
     if category_filter:
         query = query.filter(Product.category == category_filter)

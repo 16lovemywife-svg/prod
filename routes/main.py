@@ -20,11 +20,12 @@ def index():
 
     # Поиск
     if search_query:
+        search_lower = search_query.lower()
         query = query.filter(
             or_(
-                Recipe.title.ilike(f'%{search_query}%'),
-                Recipe.description.ilike(f'%{search_query}%'),
-                Recipe.tags.ilike(f'%{search_query}%')
+                func.lower(Recipe.title).contains(search_lower),
+                func.lower(Recipe.description).contains(search_lower),
+                func.lower(Recipe.tags).contains(search_lower)
             )
         )
 
