@@ -91,8 +91,8 @@ def stats():
             else:
                 recommended = tdee + burned
 
-            # Отклонение в пределах ±10% от рекомендуемого
-            tolerance = recommended * 0.10
+            # Отклонение в пределах ±20% от рекомендуемого
+            tolerance = recommended * 0.20
             if abs(intake - recommended) <= tolerance:
                 successful_days += 1
             considered_days += 1
