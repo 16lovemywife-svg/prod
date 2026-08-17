@@ -13,6 +13,38 @@
     <a href="{{ url_for('stats.stats', period='all') }}" class="btn btn-sm {% if period == 'all' %}btn-primary{% else %}btn-outline{% endif %}">Всё время</a>
 </div>
 
+<!-- Сводные карточки в одну строку -->
+<div class="stats-summary-row">
+    <div class="summary-card">
+        <div class="text-muted small">Среднее потребление</div>
+        <div class="fs-4 fw-bold">{{ avg_intake }} ккал</div>
+        <div class="text-muted small">за {{ days_count }} дн.</div>
+    </div>
+    <div class="summary-card">
+        <div class="text-muted small">Средний расход</div>
+        <div class="fs-4 fw-bold">{{ avg_burn }} ккал</div>
+        <div class="text-muted small">TDEE + тренировки</div>
+    </div>
+    <div class="summary-card">
+        <div class="text-muted small">Средний баланс</div>
+        <div class="fs-4 fw-bold {% if avg_balance > 0 %}text-warning{% else %}text-success{% endif %}">
+            {{ avg_balance }} ккал
+        </div>
+        <div class="text-muted small">
+            {% if avg_balance > 0 %}профицит{% else %}дефицит{% endif %}
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="text-muted small">Достижение цели</div>
+        <div class="fs-4 fw-bold">{{ achievement_percent }}%</div>
+        <div class="text-muted small">{{ successful_days }} из {{ considered_days }} дней</div>
+        <div class="progress mt-1" style="height:6px;">
+            <div class="progress-bar" role="progressbar" style="width: {{ achievement_percent }}%;" aria-valuenow="{{ achievement_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Графики (как были) -->
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 

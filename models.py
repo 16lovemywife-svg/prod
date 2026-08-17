@@ -219,6 +219,7 @@ class DietGoal(db.Model):
     proteins = db.Column(db.Float, default=100.0)
     fats = db.Column(db.Float, default=70.0)
     carbs = db.Column(db.Float, default=250.0)
+    goal_type = db.Column(db.String(20), default='maintain')
 
 class UserProfile(db.Model):
     """Профиль пользователя для расчёта калорий"""
