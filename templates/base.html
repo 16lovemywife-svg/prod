@@ -13,6 +13,7 @@
         <a href="{{ url_for('main.index') }}" class="navbar-brand">
             🥗 Recipe<span>Calc</span>
         </a>
+
         <ul class="navbar-nav">
             <li><a href="{{ url_for('main.index') }}" class="{% if request.endpoint == 'main.index' %}active{% endif %}">
                 🏠 Главная
@@ -38,7 +39,6 @@
 
     <!-- Контент -->
     <main class="container">
-        <!-- Flash-сообщения -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -52,7 +52,6 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Футер -->
     <footer class="footer">
         <p>🍽️ RecipeCalc — оффлайн-приложение для расчёта КБЖУ рецептов</p>
         <p style="margin-top:0.5rem; font-size:0.85rem;">
