@@ -6,7 +6,7 @@ from datetime import datetime, date, time, timedelta
 from services.activity import calculate_calories_burned
 from models import ActivityLog
 from datetime import datetime, date, time, timedelta
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from models import MealRecord, MealEntry, Recipe, Product, DietGoal, ActivityLog, UserProfile, db
 from services.activity import calculate_calories_burned
 from models import Recipe
@@ -201,6 +201,52 @@ def update_goals():
     db.session.commit()
     flash('Цели обновлены!', 'success')
     return redirect(url_for('diary.diary'))
+
+
+@diary_bp.route('/calculate-goals', methods=['POST'])
+def calculate_goals():
+    from models import UserProfile
+    profile = UserProfile.query.first()
+    if not profile:
+        return jsonify({'error': 'profile_not_found'}), 400
+
+    if profile.weight <= 0 or profile.height <= 0 or profile.age <= 0:
+        return jsonify({'error': 'invalid_profile'}), 400
+
+    goal_type = request.json.get('goal_type', 'maintain')
+
+    # Базовый метаболизм
+    if profile.gender == 'male':
+        bmr = 10 * profile.weight + 6.25 * profile.height - 5 * profile.age + 5
+    else:
+        bmr = 10 * profile.weight + 6.25 * profile.height - 5 * profile.age - 161
+
+    # Общий расход с учётом активности
+    factors = {'low': 1.2, 'medium': 1.55, 'high': 1.725}
+    tdee = bmr * factors.get(profile.activity_level, 1.55)
+
+    # Корректировка калорий в зависимости от цели
+    if goal_type == 'lose':
+        calories = tdee * 0.8          # похудение (дефицит 20%)
+    elif goal_type == 'gain':
+        calories = tdee * 1.1          # набор массы (профицит 10%)
+    else:
+        calories = tdee                # поддержание
+
+    calories = round(calories)
+    proteins = round((calories * 0.30) / 4, 1)
+    fats = round((calories * 0.30) / 9, 1)
+    carbs = round((calories * 0.40) / 4, 1)
+
+    # Для контроля можно вывести в консоль сервера
+    print(f"DEBUG: goal={goal_type}, bmr={bmr:.1f}, tdee={tdee:.1f}, cal={calories}, p={proteins}, f={fats}, c={carbs}")
+
+    return jsonify({
+        'calories': calories,
+        'proteins': proteins,
+        'fats': fats,
+        'carbs': carbs
+    })
 
 
 @diary_bp.route('/add-activity', methods=['POST'])

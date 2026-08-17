@@ -150,20 +150,23 @@
                         <form method="POST" action="{{ url_for('diary.update_goals') }}">
                             <div class="form-group">
                                 <label>Ккал</label>
-                                <input type="number" name="calories" value="{{ goal.calories }}" class="form-control form-control-sm" style="width:100px;">
+                                <input type="number" name="calories" id="goal-calories" value="{{ goal.calories }}" class="form-control form-control-sm" style="width:100px;" step="any">
                             </div>
                             <div class="form-group">
                                 <label>Белки (г)</label>
-                                <input type="number" name="proteins" value="{{ goal.proteins }}" class="form-control form-control-sm" style="width:100px;">
+                                <input type="number" name="proteins" id="goal-proteins" value="{{ goal.proteins }}" class="form-control form-control-sm" style="width:100px;" step="0.1">
                             </div>
                             <div class="form-group">
                                 <label>Жиры (г)</label>
-                                <input type="number" name="fats" value="{{ goal.fats }}" class="form-control form-control-sm" style="width:100px;">
+                                <input type="number" name="fats" id="goal-fats" value="{{ goal.fats }}" class="form-control form-control-sm" style="width:100px;" step="0.1">
                             </div>
                             <div class="form-group">
                                 <label>Углеводы (г)</label>
-                                <input type="number" name="carbs" value="{{ goal.carbs }}" class="form-control form-control-sm" style="width:100px;">
+                                <input type="number" name="carbs" id="goal-carbs" value="{{ goal.carbs }}" class="form-control form-control-sm" style="width:100px;" step="0.1">
                             </div>
+                            <button type="button" class="btn btn-sm btn-outline mt-2" id="showGoalCalcBtn">
+                                ✨ Рассчитать по профилю
+                            </button>
                             <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
                         </form>
                     </div>
@@ -226,6 +229,21 @@
         <button type="submit" class="btn btn-primary">Добавить</button>
         <button type="button" class="btn btn-outline" onclick="hideAddEntryModal()">Отмена</button>
     </form>
+</div>
+
+<!-- Модальное окно автоматического расчёта целей -->
+<div id="goalCalcModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h4>Рассчитать цели по профилю</h4>
+    <div class="form-group">
+        <label>Цель</label>
+        <select id="goalTypeSelect" class="form-control">
+            <option value="lose">Похудение</option>
+            <option value="maintain" selected>Поддержание веса</option>
+            <option value="gain">Набор массы</option>
+        </select>
+    </div>
+    <button class="btn btn-primary" id="calcGoalsBtn">Рассчитать</button>
+    <button class="btn btn-outline" id="closeGoalCalcModal">Отмена</button>
 </div>
 {% endblock %}
 
@@ -299,5 +317,72 @@ function toggleSection(id, btn) {
         btn.innerHTML = btn.innerHTML.replace('▼', '▶').replace('Скрыть', 'Показать');
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Кнопка открытия
+    const showBtn = document.getElementById('showGoalCalcBtn');
+    if (showBtn) {
+        showBtn.addEventListener('click', function() {
+            const select = document.getElementById('goalTypeSelect');
+            if (select) select.value = 'maintain'; // сброс
+            document.getElementById('goalCalcModal').style.display = 'block';
+        });
+    }
+
+    // Кнопка закрытия
+    const closeBtn = document.getElementById('closeGoalCalcModal');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            document.getElementById('goalCalcModal').style.display = 'none';
+        });
+    }
+
+    // Кнопка расчёта
+    const calcBtn = document.getElementById('calcGoalsBtn');
+    if (calcBtn) {
+        calcBtn.addEventListener('click', function() {
+            const select = document.getElementById('goalTypeSelect');
+            if (!select) return;
+
+            const goalType = select.value;
+            calcBtn.disabled = true;
+            const originalText = calcBtn.innerHTML;
+            calcBtn.innerHTML = '⏳ Считаем...';
+
+            fetch('/diary/calculate-goals', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ goal_type: goalType })  // <-- обязательно
+            })
+            .then(response => response.json())
+            .then(data => {
+                calcBtn.disabled = false;
+                calcBtn.innerHTML = originalText;
+
+                if (data.error) {
+                    if (data.error === 'profile_not_found') {
+                        alert('Сначала заполните профиль в разделе «Профиль».');
+                    } else if (data.error === 'invalid_profile') {
+                        alert('Проверьте данные профиля: вес, рост, возраст должны быть больше нуля.');
+                    }
+                    return;
+                }
+
+                document.getElementById('goal-calories').value = data.calories;
+                document.getElementById('goal-proteins').value = data.proteins;
+                document.getElementById('goal-fats').value = data.fats;
+                document.getElementById('goal-carbs').value = data.carbs;
+
+                document.getElementById('goalCalcModal').style.display = 'none';
+            })
+            .catch(err => {
+                calcBtn.disabled = false;
+                calcBtn.innerHTML = originalText;
+                console.error('Ошибка:', err);
+                alert('Произошла ошибка при расчёте.');
+            });
+        });
+    }
+});
 </script>
 {% endblock %}
