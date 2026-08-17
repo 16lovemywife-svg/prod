@@ -21,13 +21,42 @@ def index():
     # Поиск
     if search_query:
         search_lower = search_query.lower()
-        query = query.filter(
-            or_(
-                func.lower(Recipe.title).contains(search_lower),
-                func.lower(Recipe.description).contains(search_lower),
-                func.lower(Recipe.tags).contains(search_lower)
-            )
-        )
+        all_recipes = Recipe.query.all()
+        filtered = []
+        for r in all_recipes:
+            if (search_lower in r.title.lower() or
+                    search_lower in (r.description or '').lower() or
+                    search_lower in (r.tags or '').lower() or
+                    any(search_lower in (ing.product.name.lower() if ing.product else '') for ing in r.ingredients)):
+                filtered.append(r)
+        # Применяем сортировку
+        if sort_by == 'quick':
+            filtered.sort(key=lambda x: x.total_time)
+        else:
+            filtered.sort(key=lambda x: x.created_at, reverse=True)
+        # Пагинация вручную
+        total = len(filtered)
+        per_page = 12
+        page = request.args.get('page', 1, type=int)
+        start = (page - 1) * per_page
+        end = start + per_page
+        recipes = filtered[start:end]
+
+        class Pagination:
+            pass
+
+        pagination = Pagination()
+        pagination.page = page
+        pagination.per_page = per_page
+        pagination.total = total
+        pagination.pages = (total // per_page) + (1 if total % per_page else 0)
+        pagination.has_prev = page > 1
+        pagination.has_next = end < total
+        pagination.prev_num = page - 1
+        pagination.next_num = page + 1
+    else:
+        # обычная пагинация
+        query = Recipe.query
 
     # Фильтр по сложности
     if difficulty_filter:
@@ -91,34 +120,25 @@ def search():
 
     if query:
         if search_type in ('all', 'recipes'):
-            recipe_query = Recipe.query.filter(
-                or_(
-                    func.lower(Recipe.title).contains(query.lower()),
-                    func.lower(Recipe.description).contains(query.lower()),
-                    func.lower(Recipe.tags).contains(query.lower()),
-                    Recipe.ingredients.any(
-                        RecipeIngredient.product.has(
-                            func.lower(Product.name).contains(query.lower())
-                        )
-                    )
-                )
-            ).order_by(Recipe.created_at.desc())
-
-            recipe_pag = recipe_query.paginate(page=page, per_page=per_page, error_out=False)
-            recipes = recipe_pag.items
-            total_recipes = recipe_pag.total
-
+            all_recipes = Recipe.query.all()
+            q = query.lower()
+            recipe_list = [r for r in all_recipes if
+                           q in r.title.lower() or q in (r.description or '').lower() or q in (
+                                       r.tags or '').lower() or any(
+                               q in (ing.product.name.lower() if ing.product else '') for ing in r.ingredients)]
+            # сортируем и пагинируем
+            recipe_list.sort(key=lambda x: x.created_at, reverse=True)
+            total_recipes = len(recipe_list)
+            start = (page - 1) * per_page
+            recipes = recipe_list[start:start + per_page]
         if search_type in ('all', 'products'):
-            product_query = Product.query.filter(
-                or_(
-                    func.lower(Product.name).contains(query.lower()),
-                    func.lower(Product.category).contains(query.lower())
-                )
-            ).order_by(Product.name)
-
-            prod_pag = product_query.paginate(page=page, per_page=per_page, error_out=False)
-            products = prod_pag.items
-            total_products = prod_pag.total
+            all_products = Product.query.all()
+            q = query.lower()
+            product_list = [p for p in all_products if q in p.name.lower() or q in (p.category or '').lower()]
+            product_list.sort(key=lambda x: x.name)
+            total_products = len(product_list)
+            start = (page - 1) * per_page
+            products = product_list[start:start + per_page]
 
     return render_template(
         'search_results.html',

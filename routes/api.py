@@ -31,11 +31,10 @@ def calculate_nutrition_api(recipe_id):
 
 @api_bp.route('/search-products')
 def search_products():
-    query = request.args.get('q', '').strip()
+    query = request.args.get('q', '').strip().lower()
     if query:
-        products = Product.query.filter(
-            Product.name.ilike(f'%{query}%')
-        ).limit(20).all()
+        all_products = Product.query.all()
+        products = [p for p in all_products if query in p.name.lower()][:20]
     else:
         products = Product.query.order_by(Product.name).limit(20).all()
     return jsonify([p.to_dict() for p in products])
@@ -98,11 +97,10 @@ def find_by_ingredients():
 
 @api_bp.route('/search-recipes')
 def search_recipes():
-    query = request.args.get('q', '').strip()
+    query = request.args.get('q', '').strip().lower()
     if query:
-        recipes = Recipe.query.filter(
-            Recipe.title.ilike(f'%{query}%')
-        ).limit(20).all()
+        all_recipes = Recipe.query.all()
+        recipes = [r for r in all_recipes if query in r.title.lower()][:20]
     else:
         recipes = Recipe.query.order_by(Recipe.title).limit(20).all()
     return jsonify([{'id': r.id, 'title': r.title} for r in recipes])
