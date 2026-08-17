@@ -20,7 +20,9 @@ def create_app():
     from routes.profile import profile_bp
     from routes.workouts import workouts_bp
     from routes.stats import stats_bp
+    from routes.shopping import shopping_bp
 
+    app.register_blueprint(shopping_bp, url_prefix='/shopping')
     app.register_blueprint(workouts_bp, url_prefix='/workouts')
     app.register_blueprint(stats_bp, url_prefix='/stats')
     app.register_blueprint(profile_bp, url_prefix='/profile')

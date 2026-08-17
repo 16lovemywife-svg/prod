@@ -29,6 +29,7 @@
             <li><a href="{{ url_for('diary.diary') }}" class="{% if 'diary' in request.endpoint %}active{% endif %}">
                 📖 Дневник
             </a></li>
+            <li><a href="{{ url_for('shopping.shopping_list') }}" class="{% if 'shopping' in request.endpoint %}active{% endif %}">🛒 Покупки</a></li>
             <li><a href="{{ url_for('main.index', favorites='1') }}" class="{% if request.args.get('favorites') == '1' %}active{% endif %}">
                 ❤️ Избранное
             </a></li>
