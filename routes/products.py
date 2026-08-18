@@ -4,6 +4,7 @@ from flask import (Blueprint, render_template, request, redirect,
                    url_for, flash, current_app)
 from werkzeug.utils import secure_filename
 from models import Product, RecipeIngredient, db
+from sqlalchemy import func
 
 products_bp = Blueprint('products', __name__)
 
@@ -70,24 +71,23 @@ def format_price(product):
 
 @products_bp.route('/')
 def product_list():
-    """Список всех продуктов"""
     search_query = request.args.get('q', '')
     category_filter = request.args.get('category', '')
 
     query = Product.query
-
     if search_query:
-        query = query.filter(Product.name.ilike(f'%{search_query}%'))
+        # Python-фильтр для регистронезависимости
+        search_lower = search_query.lower()
+        all_products = Product.query.all()
+        products = [p for p in all_products if search_lower in p.name.lower()]
+        if category_filter:
+            products = [p for p in products if p.category == category_filter]
+        products = sorted(products, key=lambda p: p.name)
+    else:
+        query = query.filter(Product.category == category_filter) if category_filter else query
+        products = query.order_by(Product.name).all()
 
-    if category_filter:
-        query = query.filter(Product.category == category_filter)
-
-    products = query.order_by(Product.name).all()
-
-    # Все категории для фильтра
-    categories = [row[0] for row in
-                  Product.query.with_entities(Product.category).distinct().all()
-                  if row[0]]
+    categories = [row[0] for row in Product.query.with_entities(Product.category).distinct().all() if row[0]]
 
     return render_template('products.html',
                            products=products,

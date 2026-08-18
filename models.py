@@ -104,15 +104,18 @@ class RecipeIngredient(db.Model):
 class ShoppingItem(db.Model):
     """Элемент списка покупок"""
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
-    quantity = db.Column(db.Float, default=0.0)
-    unit = db.Column(db.String(20), default='г')
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=True)  # может быть NULL
+    name = db.Column(db.String(200), nullable=False)            # название на случай удаления продукта
+    quantity = db.Column(db.Float, default=0.0)                 # количество
+    unit = db.Column(db.String(20), default='г')                # единица измерения
     purchased = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self):
         return {
             'id': self.id,
+            'product_id': self.product_id,
             'name': self.name,
             'quantity': self.quantity,
             'unit': self.unit,
@@ -216,6 +219,7 @@ class DietGoal(db.Model):
     proteins = db.Column(db.Float, default=100.0)
     fats = db.Column(db.Float, default=70.0)
     carbs = db.Column(db.Float, default=250.0)
+    goal_type = db.Column(db.String(20), default='maintain')
 
 class UserProfile(db.Model):
     """Профиль пользователя для расчёта калорий"""
