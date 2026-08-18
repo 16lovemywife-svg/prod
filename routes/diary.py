@@ -1,64 +1,19 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models import MealRecord, MealEntry, Recipe, Product, DietGoal, db
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from models import (
+    MealRecord, MealEntry, Recipe, Product, DietGoal,
+    UserProfile, ActivityLog, db
+)
 from services.nutrition import calculate_recipe_nutrition
-import json
-from datetime import datetime, date, time, timedelta
 from services.activity import calculate_calories_burned
-from models import ActivityLog
 from datetime import datetime, date, time, timedelta
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models import MealRecord, MealEntry, Recipe, Product, DietGoal, ActivityLog, UserProfile, db
-from services.activity import calculate_calories_burned
-from models import Recipe
-from datetime import datetime, date, timedelta
-
+from sqlalchemy import func
 
 diary_bp = Blueprint('diary', __name__)
 
 
-@diary_bp.route('/add-recipe-to-meal', methods=['POST'])
-def add_recipe_to_meal():
-    recipe_id = int(request.form.get('recipe_id'))
-    meal_type = request.form.get('meal_type', 'завтрак')
-    date_str = request.form.get('date')
-    time_str = request.form.get('time')
-    weight_grams = float(request.form.get('weight_grams', 100))  # теперь граммы
-
-    try:
-        meal_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-    except ValueError:
-        meal_date = date.today()
-
-    try:
-        meal_time = datetime.strptime(time_str, '%H:%M').time()
-    except (ValueError, TypeError):
-        meal_time = datetime.now().time()
-
-    recipe = Recipe.query.get_or_404(recipe_id)
-
-    meal = MealRecord(
-        date=meal_date,
-        meal_type=meal_type,
-        time=meal_time
-    )
-    db.session.add(meal)
-    db.session.flush()
-
-    entry = MealEntry(
-        meal_id=meal.id,
-        entry_type='recipe',
-        recipe_id=recipe.id,
-        quantity=weight_grams  # сохраняем граммы
-    )
-    db.session.add(entry)
-    db.session.commit()
-
-    flash(f'Рецепт "{recipe.title}" добавлен ({weight_grams} г)', 'success')
-    return redirect(url_for('diary.diary', date=date_str))
-
 @diary_bp.route('/')
 def diary():
-    """Главная страница дневника с выбором даты"""
+    """Главная страница дневника с выбором даты и итогами"""
     date_str = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
     try:
         diary_date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -69,7 +24,7 @@ def diary():
     next_date = diary_date + timedelta(days=1)
 
     meals = MealRecord.query.filter(MealRecord.date == diary_date).order_by(MealRecord.time).all()
-    activities = ActivityLog.query.filter(ActivityLog.date == diary_date).order_by(ActivityLog.created_at).all()
+    activities = ActivityLog.query.filter(ActivityLog.date == diary_date).all()
 
     goal = DietGoal.query.first()
     if not goal:
@@ -88,27 +43,50 @@ def diary():
     total_fats = sum(meal.total_fats() for meal in meals)
     total_carbs = sum(meal.total_carbs() for meal in meals)
 
-    activities = ActivityLog.query.filter(ActivityLog.date == diary_date).all()
     burned_calories = sum(a.calories_burned for a in activities)
-    balance = total_calories - burned_calories
 
-    return render_template('diary.html',
-                           date=diary_date,
-                           prev_date=prev_date,
-                           next_date=next_date,
-                           now=datetime.now(),
-                           meals=meals,
-                           activities=activities,
-                           goal=goal,
-                           profile=user_profile,
-                           totals={
-                               'calories': total_calories,
-                               'proteins': total_proteins,
-                               'fats': total_fats,
-                               'carbs': total_carbs,
-                               'burned': burned_calories,
-                               'balance': balance
-                           })
+    # Расчёт TDEE на основе профиля
+    tdee = None
+    if user_profile.weight > 0 and user_profile.height > 0 and user_profile.age > 0:
+        if user_profile.gender == 'male':
+            bmr = 10 * user_profile.weight + 6.25 * user_profile.height - 5 * user_profile.age + 5
+        else:
+            bmr = 10 * user_profile.weight + 6.25 * user_profile.height - 5 * user_profile.age - 161
+        factors = {'low': 1.2, 'medium': 1.55, 'high': 1.725}
+        tdee = bmr * factors.get(user_profile.activity_level, 1.55)
+
+    # Рекомендуемое потребление с учётом цели и активности
+    recommended_intake = None
+    if tdee:
+        if goal.goal_type == 'lose':
+            recommended_intake = (tdee + burned_calories) - (tdee * 0.2)
+        elif goal.goal_type == 'gain':
+            recommended_intake = (tdee + burned_calories) + (tdee * 0.1)
+        else:
+            recommended_intake = tdee + burned_calories
+
+    net_balance = (total_calories - recommended_intake) if recommended_intake is not None else None
+
+    return render_template(
+        'diary.html',
+        date=diary_date,
+        prev_date=prev_date,
+        next_date=next_date,
+        now=datetime.now(),
+        meals=meals,
+        goal=goal,
+        totals={
+            'calories': total_calories,
+            'proteins': total_proteins,
+            'fats': total_fats,
+            'carbs': total_carbs,
+            'burned': burned_calories,
+            'tdee': tdee,
+            'recommended': recommended_intake,
+            'balance': net_balance,
+            'net_balance': net_balance
+        }
+    )
 
 
 @diary_bp.route('/add-meal', methods=['POST'])
@@ -119,15 +97,15 @@ def add_meal():
     time_str = request.form.get('time', datetime.now().strftime('%H:%M'))
 
     try:
-        diary_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        meal_date = datetime.strptime(date_str, '%Y-%m-%d').date()
     except ValueError:
-        diary_date = date.today()
+        meal_date = date.today()
     try:
         meal_time = datetime.strptime(time_str, '%H:%M').time()
     except ValueError:
         meal_time = datetime.now().time()
 
-    meal = MealRecord(date=diary_date, meal_type=meal_type, time=meal_time)
+    meal = MealRecord(date=meal_date, meal_type=meal_type, time=meal_time)
     db.session.add(meal)
     db.session.commit()
     flash('Приём пищи добавлен!', 'success')
@@ -136,29 +114,40 @@ def add_meal():
 
 @diary_bp.route('/add-entry/<int:meal_id>', methods=['POST'])
 def add_entry(meal_id):
-    """Добавление позиции в приём пищи"""
+    """Добавление позиции в приём пищи (продукт или рецепт)"""
     meal = MealRecord.query.get_or_404(meal_id)
-    entry_type = request.form.get('entry_type')  # 'recipe' или 'product'
+    entry_type = request.form.get('entry_type')
     quantity = float(request.form.get('quantity', 1))
 
     if entry_type == 'recipe':
         recipe_id = int(request.form.get('recipe_id'))
-        entry = MealEntry(meal_id=meal.id, entry_type='recipe', recipe_id=recipe_id, quantity=quantity)
+        entry = MealEntry(
+            meal_id=meal.id,
+            entry_type='recipe',
+            recipe_id=recipe_id,
+            quantity=quantity  # теперь это граммы готового блюда
+        )
     elif entry_type == 'product':
         product_id = int(request.form.get('product_id'))
-        entry = MealEntry(meal_id=meal.id, entry_type='product', product_id=product_id, quantity=quantity)
+        entry = MealEntry(
+            meal_id=meal.id,
+            entry_type='product',
+            product_id=product_id,
+            quantity=quantity  # граммы продукта
+        )
     else:
         flash('Неверный тип записи', 'error')
         return redirect(url_for('diary.diary', date=meal.date.strftime('%Y-%m-%d')))
 
     db.session.add(entry)
     db.session.commit()
-    flash('Блюдо/продукт добавлен в приём пищи', 'success')
+    flash('Запись добавлена', 'success')
     return redirect(url_for('diary.diary', date=meal.date.strftime('%Y-%m-%d')))
 
 
 @diary_bp.route('/edit-entry/<int:entry_id>', methods=['POST'])
 def edit_entry(entry_id):
+    """Редактирование количества позиции"""
     entry = MealEntry.query.get_or_404(entry_id)
     quantity = float(request.form.get('quantity', entry.quantity))
     entry.quantity = quantity
@@ -187,8 +176,9 @@ def delete_meal(meal_id):
     return redirect(url_for('diary.diary', date=meal_date.strftime('%Y-%m-%d')))
 
 
-@diary_bp.route('/goals', methods=['POST'])
+@diary_bp.route('/update-goals', methods=['POST'])
 def update_goals():
+    """Обновление целей по питанию"""
     goal = DietGoal.query.first()
     if not goal:
         goal = DietGoal()
@@ -198,73 +188,92 @@ def update_goals():
     goal.proteins = float(request.form.get('proteins', goal.proteins))
     goal.fats = float(request.form.get('fats', goal.fats))
     goal.carbs = float(request.form.get('carbs', goal.carbs))
+    goal.goal_type = request.form.get('goal_type', goal.goal_type)
+
     db.session.commit()
     flash('Цели обновлены!', 'success')
     return redirect(url_for('diary.diary'))
 
 
-@diary_bp.route('/add-activity', methods=['POST'])
-def add_activity():
-    """Добавление активности"""
-    date_str = request.form.get('date', datetime.now().strftime('%Y-%m-%d'))
-    activity_type = request.form.get('activity_type', 'другое')
-    duration_minutes = int(request.form.get('duration_minutes', 30))
-    intensity = request.form.get('intensity', 'medium')
-    weight = float(request.form.get('weight', 70))
+@diary_bp.route('/calculate-goals', methods=['POST'])
+def calculate_goals():
+    """Автоматический расчёт целей на основе профиля и цели"""
+    profile = UserProfile.query.first()
+    if not profile:
+        return jsonify({'error': 'profile_not_found'}), 400
 
-    # Если пользователь не ввёл калории вручную, рассчитываем
-    calories_input = request.form.get('calories_burned', '')
-    if calories_input.strip():
-        calories = float(calories_input)
+    if profile.weight <= 0 or profile.height <= 0 or profile.age <= 0:
+        return jsonify({'error': 'invalid_profile'}), 400
+
+    goal_type = request.json.get('goal_type', 'maintain')
+
+    if profile.gender == 'male':
+        bmr = 10 * profile.weight + 6.25 * profile.height - 5 * profile.age + 5
     else:
-        calories = calculate_calories_burned(weight, activity_type, duration_minutes, intensity)
+        bmr = 10 * profile.weight + 6.25 * profile.height - 5 * profile.age - 161
+
+    factors = {'low': 1.2, 'medium': 1.55, 'high': 1.725}
+    tdee = bmr * factors.get(profile.activity_level, 1.55)
+
+    if goal_type == 'lose':
+        calories = tdee * 0.8
+    elif goal_type == 'gain':
+        calories = tdee * 1.1
+    else:
+        calories = tdee
+
+    calories = round(calories)
+    proteins = round((calories * 0.30) / 4, 1)
+    fats = round((calories * 0.30) / 9, 1)
+    carbs = round((calories * 0.40) / 4, 1)
+
+    print(f"DEBUG: goal_type={goal_type}, tdee={tdee:.1f}, calories={calories}")
+
+    return jsonify({
+        'calories': calories,
+        'proteins': proteins,
+        'fats': fats,
+        'carbs': carbs
+    })
+
+
+@diary_bp.route('/add-recipe-to-meal', methods=['POST'])
+def add_recipe_to_meal():
+    """Добавление рецепта в дневник как приём пищи (по граммам)"""
+    recipe_id = int(request.form.get('recipe_id'))
+    meal_type = request.form.get('meal_type', 'завтрак')
+    date_str = request.form.get('date')
+    time_str = request.form.get('time')
+    weight_grams = float(request.form.get('weight_grams', 100))
 
     try:
-        diary_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-    except ValueError:
-        diary_date = date.today()
+        meal_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        meal_date = date.today()
 
-    activity = ActivityLog(
-        date=diary_date,
-        activity_type=activity_type,
-        duration_minutes=duration_minutes,
-        intensity=intensity,
-        calories_burned=calories,
-        notes=request.form.get('notes', '')
+    try:
+        meal_time = datetime.strptime(time_str, '%H:%M').time()
+    except (ValueError, TypeError):
+        meal_time = datetime.now().time()
+
+    recipe = Recipe.query.get_or_404(recipe_id)
+
+    meal = MealRecord(
+        date=meal_date,
+        meal_type=meal_type,
+        time=meal_time
     )
-    db.session.add(activity)
+    db.session.add(meal)
+    db.session.flush()
+
+    entry = MealEntry(
+        meal_id=meal.id,
+        entry_type='recipe',
+        recipe_id=recipe.id,
+        quantity=weight_grams  # сохраняем граммы
+    )
+    db.session.add(entry)
     db.session.commit()
-    flash('Активность добавлена!', 'success')
+
+    flash(f'Рецепт "{recipe.title}" добавлен ({weight_grams} г)', 'success')
     return redirect(url_for('diary.diary', date=date_str))
-
-
-@diary_bp.route('/delete-activity/<int:activity_id>', methods=['POST'])
-def delete_activity(activity_id):
-    activity = ActivityLog.query.get_or_404(activity_id)
-    activity_date = activity.date
-    db.session.delete(activity)
-    db.session.commit()
-    flash('Активность удалена', 'success')
-    return redirect(url_for('diary.diary', date=activity_date.strftime('%Y-%m-%d')))
-
-
-@diary_bp.route('/edit-activity/<int:activity_id>', methods=['POST'])
-def edit_activity(activity_id):
-    activity = ActivityLog.query.get_or_404(activity_id)
-    activity.activity_type = request.form.get('activity_type', activity.activity_type)
-    activity.duration_minutes = int(request.form.get('duration_minutes', activity.duration_minutes))
-    activity.intensity = request.form.get('intensity', activity.intensity)
-
-    # Если калории введены вручную, используем их, иначе рассчитываем заново
-    calories_input = request.form.get('calories_burned', '')
-    if calories_input.strip():
-        activity.calories_burned = float(calories_input)
-    else:
-        weight = 70  # можно брать из профиля, но для простоты 70
-        activity.calories_burned = calculate_calories_burned(weight, activity.activity_type, activity.duration_minutes,
-                                                             activity.intensity)
-
-    activity.notes = request.form.get('notes', '')
-    db.session.commit()
-    flash('Активность обновлена', 'success')
-    return redirect(url_for('diary.diary', date=activity.date.strftime('%Y-%m-%d')))
