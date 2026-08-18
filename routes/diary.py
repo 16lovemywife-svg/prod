@@ -66,6 +66,33 @@ def diary():
             recommended_intake = tdee + burned_calories
 
     net_balance = (total_calories - recommended_intake) if recommended_intake is not None else None
+    # Собираем последние использованные позиции (до 5 уникальных)
+    recent_entries = []
+    seen = set()
+    recent_raw = MealEntry.query.order_by(MealEntry.id.desc()).limit(100).all()
+    for entry in recent_raw:
+        key = (entry.entry_type, entry.recipe_id or entry.product_id)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        if entry.entry_type == 'recipe' and entry.recipe:
+            recent_entries.append({
+                'type': 'recipe',
+                'id': entry.recipe.id,
+                'name': entry.recipe.title,
+                'quantity': entry.quantity if entry.quantity else 100
+            })
+        elif entry.entry_type == 'product' and entry.product:
+            recent_entries.append({
+                'type': 'product',
+                'id': entry.product.id,
+                'name': entry.product.name,
+                'quantity': entry.quantity if entry.quantity else 100
+            })
+
+        if len(recent_entries) >= 5:
+            break
 
     return render_template(
         'diary.html',
@@ -75,6 +102,7 @@ def diary():
         now=datetime.now(),
         meals=meals,
         goal=goal,
+        recent_entries=recent_entries,
         totals={
             'calories': total_calories,
             'proteins': total_proteins,
@@ -277,3 +305,41 @@ def add_recipe_to_meal():
 
     flash(f'Рецепт "{recipe.title}" добавлен ({weight_grams} г)', 'success')
     return redirect(url_for('diary.diary', date=date_str))
+
+
+@diary_bp.route('/copy-meal/<int:meal_id>', methods=['POST'])
+def copy_meal(meal_id):
+    """Копирует приём пищи на новую дату/время/тип"""
+    source_meal = MealRecord.query.get_or_404(meal_id)
+
+    date_str = request.form.get('date')
+    time_str = request.form.get('time')
+    meal_type = request.form.get('meal_type', source_meal.meal_type)
+
+    try:
+        new_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        new_date = date.today()
+
+    try:
+        new_time = datetime.strptime(time_str, '%H:%M').time()
+    except (ValueError, TypeError):
+        new_time = source_meal.time
+
+    new_meal = MealRecord(date=new_date, meal_type=meal_type, time=new_time)
+    db.session.add(new_meal)
+    db.session.flush()
+
+    for entry in source_meal.entries:
+        new_entry = MealEntry(
+            meal_id=new_meal.id,
+            entry_type=entry.entry_type,
+            recipe_id=entry.recipe_id,
+            product_id=entry.product_id,
+            quantity=entry.quantity
+        )
+        db.session.add(new_entry)
+
+    db.session.commit()
+    flash('Приём скопирован!', 'success')
+    return redirect(url_for('diary.diary', date=new_date.isoformat()))
