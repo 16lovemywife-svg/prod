@@ -277,3 +277,41 @@ def add_recipe_to_meal():
 
     flash(f'Рецепт "{recipe.title}" добавлен ({weight_grams} г)', 'success')
     return redirect(url_for('diary.diary', date=date_str))
+
+
+@diary_bp.route('/copy-meal/<int:meal_id>', methods=['POST'])
+def copy_meal(meal_id):
+    """Копирует приём пищи на новую дату/время/тип"""
+    source_meal = MealRecord.query.get_or_404(meal_id)
+
+    date_str = request.form.get('date')
+    time_str = request.form.get('time')
+    meal_type = request.form.get('meal_type', source_meal.meal_type)
+
+    try:
+        new_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        new_date = date.today()
+
+    try:
+        new_time = datetime.strptime(time_str, '%H:%M').time()
+    except (ValueError, TypeError):
+        new_time = source_meal.time
+
+    new_meal = MealRecord(date=new_date, meal_type=meal_type, time=new_time)
+    db.session.add(new_meal)
+    db.session.flush()
+
+    for entry in source_meal.entries:
+        new_entry = MealEntry(
+            meal_id=new_meal.id,
+            entry_type=entry.entry_type,
+            recipe_id=entry.recipe_id,
+            product_id=entry.product_id,
+            quantity=entry.quantity
+        )
+        db.session.add(new_entry)
+
+    db.session.commit()
+    flash('Приём скопирован!', 'success')
+    return redirect(url_for('diary.diary', date=new_date.isoformat()))

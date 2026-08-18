@@ -30,6 +30,9 @@
                     <div class="d-flex gap-2">
                         <span class="badge badge-primary">{{ meal.total_calories()|round(1) }} ккал</span>
                         <button class="btn btn-sm btn-outline" onclick="toggleSection('entries-{{ meal.id }}', this)">▼</button>
+                        <button class="btn btn-sm btn-outline"
+                            onclick="showCopyMealModal({{ meal.id }}, '{{ meal.meal_type }}', '{{ meal.time.strftime('%H:%M') }}')"
+                            title="Копировать">⧉</button>
                         <form method="POST" action="{{ url_for('diary.delete_meal', meal_id=meal.id) }}" onsubmit="return confirm('Удалить приём пищи?')">
                             <button type="submit" class="btn btn-sm btn-danger">🗑</button>
                         </form>
@@ -302,6 +305,34 @@
     <button class="btn btn-primary" id="calcGoalsBtn">Рассчитать</button>
     <button class="btn btn-outline" id="closeGoalCalcModal">Отмена</button>
 </div>
+
+<!-- Модальное окно копирования приёма -->
+<div id="copyMealModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h3>Копировать приём</h3>
+    <form method="POST" id="copyMealForm">
+        <input type="hidden" name="meal_id" id="copyMealId">
+        <div class="form-group">
+            <label>Дата</label>
+            <input type="date" name="date" id="copyDate" class="form-control" value="{{ date.isoformat() }}" required>
+        </div>
+        <div class="form-group">
+            <label>Время</label>
+            <input type="time" name="time" id="copyTime" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Тип приёма</label>
+            <select name="meal_type" id="copyMealType" class="form-control">
+                <option value="завтрак">Завтрак</option>
+                <option value="обед">Обед</option>
+                <option value="ужин">Ужин</option>
+                <option value="перекус">Перекус</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Скопировать</button>
+        <button type="button" class="btn btn-outline" onclick="hideCopyMealModal()">Отмена</button>
+    </form>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -454,5 +485,18 @@ document.addEventListener('DOMContentLoaded', function() {
         calcBtn.addEventListener('click', calculateGoals);
     }
 });
+
+function showCopyMealModal(mealId, mealType, time) {
+    document.getElementById('copyMealId').value = mealId;
+    document.getElementById('copyMealType').value = mealType;
+    document.getElementById('copyTime').value = time;
+    // Устанавливаем action формы
+    document.getElementById('copyMealForm').action = '/diary/copy-meal/' + mealId;
+    document.getElementById('copyMealModal').style.display = 'block';
+}
+
+function hideCopyMealModal() {
+    document.getElementById('copyMealModal').style.display = 'none';
+}
 </script>
 {% endblock %}
