@@ -154,23 +154,37 @@ async function searchRecipes() {
         // Отображаем карточки рецептов
         let html = '';
         recipes.forEach(recipe => {
-            html += `
-            <a href="/recipes/${recipe.id}" class="recipe-card-link">
-                <div class="card">
-                    ${recipe.image
-                        ? `<img src="/static/${recipe.image}" alt="${recipe.title}" class="card-img">`
-                        : '<div class="card-img-placeholder">🍽️</div>'}
-                    <div class="card-body">
-                        <h3 class="card-title">${recipe.title}</h3>
-                        <p class="card-text">${recipe.description ? recipe.description.substring(0, 80) : ''}</p>
-                        <div class="card-tags">
-                            <span class="badge badge-primary">⏱ ${recipe.total_time} мин</span>
-                            <span class="badge badge-success">${recipe.default_portions} порц.</span>
-                        </div>
-                    </div>
+    const missing = recipe.missing_ingredients || [];
+    let missingHtml = '';
+    if (missing.length > 0) {
+        missingHtml = `<div class="mt-2">
+            <span class="text-muted small">Не хватает:</span>
+            <div class="d-flex flex-wrap gap-1 mt-1">
+                ${missing.map(m => `<span class="badge badge-danger">${m}</span>`).join('')}
+            </div>
+        </div>`;
+    } else {
+        missingHtml = `<div class="mt-2"><span class="badge badge-success">Все ингредиенты есть</span></div>`;
+    }
+
+    html += `
+    <a href="/recipes/${recipe.id}" class="recipe-card-link">
+        <div class="card">
+            ${recipe.image
+                ? `<img src="/static/${recipe.image}" alt="${recipe.title}" class="card-img">`
+                : '<div class="card-img-placeholder">🍽️</div>'}
+            <div class="card-body">
+                <h3 class="card-title">${recipe.title}</h3>
+                <p class="card-text">${recipe.description ? recipe.description.substring(0, 80) : ''}</p>
+                <div class="card-tags">
+                    <span class="badge badge-primary">⏱ ${recipe.total_time} мин</span>
+                    <span class="badge badge-success">${recipe.default_portions} порц.</span>
                 </div>
-            </a>`;
-        });
+                ${missingHtml}
+            </div>
+        </div>
+    </a>`;
+});
         resultsContainer.innerHTML = html;
     } catch (err) {
         console.error('Ошибка:', err);

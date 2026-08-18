@@ -90,7 +90,6 @@ def find_by_ingredients():
         return jsonify([])
 
     if require_all:
-        # Рецепты, у которых нет ни одного ингредиента вне выбранных
         subquery = db.session.query(RecipeIngredient.recipe_id).filter(
             ~RecipeIngredient.product_id.in_(ids)
         ).subquery()
@@ -111,7 +110,17 @@ def find_by_ingredients():
         return jsonify([])
 
     recipes = Recipe.query.filter(Recipe.id.in_(recipe_ids)).order_by(Recipe.created_at.desc()).limit(20).all()
-    return jsonify([r.to_dict() for r in recipes])
+
+    result = []
+    for recipe in recipes:
+        data = recipe.to_dict()
+        # Получаем ингредиенты рецепта
+        ingredients = RecipeIngredient.query.filter_by(recipe_id=recipe.id).all()
+        missing = [ing.product.name for ing in ingredients if ing.product_id not in ids]
+        data['missing_ingredients'] = missing
+        result.append(data)
+
+    return jsonify(result)
 
 
 @api_bp.route('/search-recipes')
