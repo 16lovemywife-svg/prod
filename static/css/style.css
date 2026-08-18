@@ -1671,3 +1671,16 @@ tr:hover {
     background: rgba(0,212,255,0.1);
     color: var(--neon-blue);
 }
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 300px;       /* было 200px, можно сделать 300 или 400 */
+    overflow-y: auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}

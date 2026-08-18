@@ -4,6 +4,9 @@ from sqlalchemy import or_, func
 
 main_bp = Blueprint('main', __name__)
 
+@main_bp.route('/fridge')
+def fridge():
+    return render_template('fridge.html')
 
 @main_bp.route('/')
 def index():

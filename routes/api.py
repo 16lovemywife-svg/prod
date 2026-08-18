@@ -78,21 +78,52 @@ def replace_ingredient(recipe_id):
 
 @api_bp.route('/recipes/by-ingredients')
 def find_by_ingredients():
-    """Поиск рецептов по имеющимся ингредиентам (режим Холодильник)"""
     product_ids = request.args.getlist('product_ids[]')
+    require_all = request.args.get('require_all', '0') == '1'
+
     if not product_ids:
         return jsonify([])
 
-    # Ищем рецепты, содержащие хотя бы один из указанных продуктов
-    from sqlalchemy import and_
+    try:
+        ids = [int(pid) for pid in product_ids]
+    except ValueError:
+        return jsonify([])
+
+    # Получаем ID рецептов, содержащих хотя бы один из выбранных продуктов
     recipe_ids = RecipeIngredient.query.filter(
-        RecipeIngredient.product_id.in_([int(pid) for pid in product_ids])
+        RecipeIngredient.product_id.in_(ids)
     ).with_entities(RecipeIngredient.recipe_id).distinct().all()
-
     recipe_ids = [r[0] for r in recipe_ids]
-    recipes = Recipe.query.filter(Recipe.id.in_(recipe_ids)).limit(20).all()
 
-    return jsonify([r.to_dict() for r in recipes])
+    if not recipe_ids:
+        return jsonify([])
+
+    recipes = Recipe.query.filter(Recipe.id.in_(recipe_ids)).all()
+
+    result = []
+    for recipe in recipes:
+        ingredients = RecipeIngredient.query.filter_by(recipe_id=recipe.id).all()
+        total_ingredients = len(ingredients)
+        matched_ingredients = sum(1 for ing in ingredients if ing.product_id in ids)
+
+        # Если включён фильтр "только полные совпадения" и рецепт не подходит, пропускаем
+        if require_all and matched_ingredients < total_ingredients:
+            continue
+
+        missing_ingredients = [ing.product.name for ing in ingredients if ing.product_id not in ids]
+        match_percent = round((matched_ingredients / total_ingredients) * 100) if total_ingredients > 0 else 0
+
+        data = recipe.to_dict()
+        data['missing_ingredients'] = missing_ingredients
+        data['match_percent'] = match_percent
+        data['matched_count'] = matched_ingredients
+        data['total_ingredients'] = total_ingredients
+        result.append(data)
+
+    # Сортировка: сначала по проценту совпадения, затем по количеству совпавших, затем по названию
+    result.sort(key=lambda x: (-x['match_percent'], -x['matched_count'], x['title'].lower()))
+
+    return jsonify(result)
 
 
 @api_bp.route('/search-recipes')
