@@ -194,7 +194,7 @@ class Autocomplete {
         this.input = inputElement;
         this.apiUrl = options.apiUrl || '/api/search-products';
         this.placeholder = options.placeholder || 'Начните вводить...';
-        this.minLength = options.minLength || 0; // 0 - показывать всё при фокусе
+        this.minLength = options.minLength || 0;
         this.showAllOnFocus = options.showAllOnFocus !== undefined ? options.showAllOnFocus : true;
         this.onSelect = options.onSelect || function(item) {};
         this.valueField = options.valueField || 'id';
@@ -220,30 +220,53 @@ class Autocomplete {
         this.input.setAttribute('autocomplete', 'off');
         this.input.setAttribute('placeholder', this.placeholder);
 
-        // Создаём контейнер для выпадающего списка
+        // Создаём выпадающий список в body
         this.dropdown = document.createElement('div');
         this.dropdown.className = 'autocomplete-dropdown';
         this.dropdown.style.display = 'none';
-        this.input.parentNode.style.position = 'relative';
-        this.input.parentNode.appendChild(this.dropdown);
+        document.body.appendChild(this.dropdown);
 
-        // Обработчики событий
+        // Обработчики
         this.input.addEventListener('input', this.debounce(() => this.fetchSuggestions(), 300));
         this.input.addEventListener('focus', () => {
-            // При фокусе показываем все элементы, если поле пустое и опция включена
             if (this.showAllOnFocus && this.input.value.trim() === '') {
                 this.fetchSuggestions(true);
             } else if (this.input.value.length >= this.minLength) {
                 this.fetchSuggestions();
             }
         });
-        // Если уже есть значение (при редактировании), можно установить
+        this.input.addEventListener('keydown', (e) => this.handleKeyboard(e));
+        document.addEventListener('click', (e) => {
+            if (!this.input.contains(e.target) && !this.dropdown.contains(e.target)) {
+                this.close();
+            }
+        });
+        window.addEventListener('scroll', () => {
+            if (this.isOpen) this.positionDropdown();
+        });
+        window.addEventListener('resize', () => {
+            if (this.isOpen) this.positionDropdown();
+        });
+    }
+
+    positionDropdown() {
+        if (!this.dropdown) return;
+        const rect = this.input.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        this.dropdown.style.position = 'fixed';
+        this.dropdown.style.top = `${rect.bottom}px`;
+        this.dropdown.style.left = `${rect.left}px`;
+        this.dropdown.style.width = `${rect.width}px`;
+        this.dropdown.style.maxHeight = '300px';
+        this.dropdown.style.overflowY = 'auto';
+        this.dropdown.style.zIndex = '10000';
     }
 
     async fetchSuggestions(forceAll = false) {
         let query = this.input.value.trim();
         if (forceAll) {
-            query = ''; // Отправим пустой запрос, чтобы получить всё
+            query = '';
         }
         if (!forceAll && query.length < this.minLength) {
             this.close();
@@ -275,6 +298,7 @@ class Autocomplete {
             this.dropdown.appendChild(div);
         });
 
+        this.positionDropdown();
         this.dropdown.style.display = 'block';
         this.isOpen = true;
     }
@@ -288,7 +312,9 @@ class Autocomplete {
     }
 
     close() {
-        this.dropdown.style.display = 'none';
+        if (this.dropdown) {
+            this.dropdown.style.display = 'none';
+        }
         this.isOpen = false;
     }
 
@@ -332,7 +358,6 @@ class Autocomplete {
         };
     }
 
-    // Установить значение извне (для редактирования)
     setValue(id, label) {
         this.input.value = label;
         this.hiddenInput.value = id;

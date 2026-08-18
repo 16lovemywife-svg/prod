@@ -11,9 +11,11 @@
     <div class="card-body">
         <div class="form-group">
             <label>Добавить продукт</label>
-            <input type="text" id="fridgeProductInput" class="form-control" placeholder="Поиск продукта..." autocomplete="off">
-            <input type="hidden" id="fridgeProductId">
-            <button class="btn btn-primary mt-2" onclick="addFridgeItem()">➕ Добавить</button>
+            <div class="d-flex gap-2 align-items-center">
+                <input type="text" id="fridgeProductInput" class="form-control" placeholder="Поиск продукта..." autocomplete="off" style="flex:1;">
+                <input type="hidden" id="fridgeProductId">
+                <button class="btn btn-primary" onclick="addFridgeItem()">➕ Добавить</button>
+            </div>
         </div>
     </div>
 </div>
