@@ -4,7 +4,7 @@
 
 {% block content %}
 <h1 style="color: var(--neon-blue);">🧊 Холодильник</h1>
-<p class="text-muted">Отметьте продукты, которые у вас есть, и мы подберём рецепты.</p>
+<p class="text-muted">Отметьте продукты, которые у вас есть, и мы сразу подберём рецепты.</p>
 
 <!-- Блок добавления продукта -->
 <div class="card mb-4">
@@ -23,39 +23,37 @@
 <!-- Список выбранных продуктов -->
 <div class="card mb-4">
     <div class="card-body">
-        <h3>Мои продукты</h3>
+        <div class="d-flex justify-content-between align-items-center">
+            <h3>Мои продукты</h3>
+            <button class="btn btn-sm btn-danger" onclick="clearFridge()">🗑 Очистить</button>
+        </div>
         <ul id="fridgeList" class="list-unstyled">
             <!-- Динамически заполняется -->
         </ul>
     </div>
 </div>
 
-<div class="form-check mb-3">
-    <input class="form-check-input" type="checkbox" id="requireAllCheckbox">
-    <label class="form-check-label" for="requireAllCheckbox">
-        Показывать только рецепты, которые можно приготовить полностью из выбранных продуктов
-    </label>
-</div>
-
-<!-- Кнопка поиска -->
-<div class="text-center mb-4">
-    <button class="btn btn-primary" onclick="searchRecipes()">🔍 Найти рецепты</button>
-</div>
-
 <!-- Результаты -->
-<div id="fridgeResults" class="recipe-grid"></div>
+<div id="fridgeResultsContainer">
+    <div class="text-center text-muted" id="fridgeEmptyMessage">Добавьте продукты, чтобы увидеть подходящие рецепты.</div>
+    <div id="fridgeResults" class="recipe-grid"></div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Хранилище выбранных продуктов
 let fridgeItems = [];
+let lastRecipes = [];
 
-// Загрузка из localStorage
 document.addEventListener('DOMContentLoaded', function() {
+    // Загружаем сохранённые продукты
     const saved = localStorage.getItem('fridge_items');
     if (saved) {
-        fridgeItems = JSON.parse(saved);
+        try {
+            fridgeItems = JSON.parse(saved);
+        } catch (e) {
+            fridgeItems = [];
+        }
     }
     renderFridgeList();
 
@@ -65,15 +63,49 @@ document.addEventListener('DOMContentLoaded', function() {
             apiUrl: '/api/search-products',
             onSelect: function(item) {
                 document.getElementById('fridgeProductId').value = item.id;
-                // При выборе сразу добавляем
+                // Добавляем продукт сразу после выбора
                 addFridgeItem();
             }
         });
+    }
+
+    // Если есть сохранённые продукты, сразу ищем рецепты
+    if (fridgeItems.length > 0) {
+        searchRecipes();
     }
 });
 
 function saveFridgeItems() {
     localStorage.setItem('fridge_items', JSON.stringify(fridgeItems));
+}
+
+function renderFridgeList() {
+    const list = document.getElementById('fridgeList');
+    if (!list) return;
+    list.innerHTML = '';
+    if (fridgeItems.length === 0) {
+        list.innerHTML = '<li class="text-muted">Пока нет продуктов</li>';
+        return;
+    }
+    fridgeItems.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'd-flex justify-content-between align-items-center py-2';
+        li.style.borderBottom = '1px solid var(--border-color)';
+        li.innerHTML = `
+            <span>${item.name}</span>
+            <button class="btn btn-sm btn-danger" onclick="removeFridgeItem('${item.id}')">✕</button>
+        `;
+        list.appendChild(li);
+    });
+}
+
+function clearFridge() {
+    if (fridgeItems.length === 0) return;
+    fridgeItems = [];
+    saveFridgeItems();
+    renderFridgeList();
+    document.getElementById('fridgeResults').innerHTML = '';
+    document.getElementById('fridgeEmptyMessage').style.display = 'block';
 }
 
 function addFridgeItem() {
@@ -99,46 +131,37 @@ function addFridgeItem() {
     renderFridgeList();
     input.value = '';
     document.getElementById('fridgeProductId').value = '';
+
+    // Живое обновление
+    searchRecipes();
 }
 
 function removeFridgeItem(id) {
     fridgeItems = fridgeItems.filter(item => item.id !== id);
     saveFridgeItems();
     renderFridgeList();
-}
-
-function renderFridgeList() {
-    const list = document.getElementById('fridgeList');
-    if (!list) return;
-    list.innerHTML = '';
+    // Живое обновление
     if (fridgeItems.length === 0) {
-        list.innerHTML = '<li class="text-muted">Пока нет продуктов</li>';
-        return;
+        document.getElementById('fridgeResults').innerHTML = '';
+        document.getElementById('fridgeEmptyMessage').style.display = 'block';
+    } else {
+        searchRecipes();
     }
-    fridgeItems.forEach(item => {
-        const li = document.createElement('li');
-        li.className = 'd-flex justify-content-between align-items-center py-2';
-        li.style.borderBottom = '1px solid var(--border-color)';
-        li.innerHTML = `
-            <span>${item.name}</span>
-            <button class="btn btn-sm btn-danger" onclick="removeFridgeItem('${item.id}')">✕</button>
-        `;
-        list.appendChild(li);
-    });
 }
 
 async function searchRecipes() {
     const resultsContainer = document.getElementById('fridgeResults');
+    const emptyMessage = document.getElementById('fridgeEmptyMessage');
+
     if (!fridgeItems.length) {
-        resultsContainer.innerHTML = '<p class="text-center text-muted">Добавьте хотя бы один продукт.</p>';
+        resultsContainer.innerHTML = '';
+        emptyMessage.style.display = 'block';
         return;
     }
 
-    if (document.getElementById('requireAllCheckbox').checked) {
-    params.append('require_all', '1');
-    }
+    emptyMessage.style.display = 'none';
+    resultsContainer.innerHTML = '<div class="text-center text-muted">Ищем рецепты...</div>';
 
-    // Собираем параметры
     const params = new URLSearchParams();
     fridgeItems.forEach(item => {
         params.append('product_ids[]', item.id);
@@ -147,50 +170,62 @@ async function searchRecipes() {
     try {
         const response = await fetch(`/api/recipes/by-ingredients?${params.toString()}`);
         const recipes = await response.json();
+        lastRecipes = recipes;
 
         if (!recipes.length) {
-            resultsContainer.innerHTML = '<p class="text-center text-muted">Рецептов не найдено.</p>';
+            resultsContainer.innerHTML = '<div class="text-center text-muted">Рецептов не найдено.</div>';
             return;
         }
 
-        // Отображаем карточки рецептов
         let html = '';
         recipes.forEach(recipe => {
-    const missing = recipe.missing_ingredients || [];
-    let missingHtml = '';
-    if (missing.length > 0) {
-        missingHtml = `<div class="mt-2">
-            <span class="text-muted small">Не хватает:</span>
-            <div class="d-flex flex-wrap gap-1 mt-1">
-                ${missing.map(m => `<span class="badge badge-danger">${m}</span>`).join('')}
-            </div>
-        </div>`;
-    } else {
-        missingHtml = `<div class="mt-2"><span class="badge badge-success">Все ингредиенты есть</span></div>`;
-    }
+            const missing = recipe.missing_ingredients || [];
+            let missingHtml = '';
+            if (missing.length > 0) {
+                missingHtml = `<div class="mt-2">
+                    <span class="text-muted small">Не хватает:</span>
+                    <div class="d-flex flex-wrap gap-1 mt-1">
+                        ${missing.map(m => `<span class="badge badge-danger">${m}</span>`).join('')}
+                    </div>
+                </div>`;
+            } else {
+                missingHtml = `<div class="mt-2"><span class="badge badge-success">Все ингредиенты есть</span></div>`;
+            }
 
-    html += `
-    <a href="/recipes/${recipe.id}" class="recipe-card-link">
-        <div class="card">
-            ${recipe.image
-                ? `<img src="/static/${recipe.image}" alt="${recipe.title}" class="card-img">`
-                : '<div class="card-img-placeholder">🍽️</div>'}
-            <div class="card-body">
-                <h3 class="card-title">${recipe.title}</h3>
-                <p class="card-text">${recipe.description ? recipe.description.substring(0, 80) : ''}</p>
-                <div class="card-tags">
-                    <span class="badge badge-primary">⏱ ${recipe.total_time} мин</span>
-                    <span class="badge badge-success">${recipe.default_portions} порц.</span>
+            let matchBadgeClass = 'badge-secondary';
+            if (recipe.match_percent >= 80) {
+                matchBadgeClass = 'badge-success';
+            } else if (recipe.match_percent >= 50) {
+                matchBadgeClass = 'badge-warning';
+            } else {
+                matchBadgeClass = 'badge-danger';
+            }
+
+            html += `
+            <a href="/recipes/${recipe.id}" class="recipe-card-link">
+                <div class="card">
+                    ${recipe.image
+                        ? `<img src="/static/${recipe.image}" alt="${recipe.title}" class="card-img">`
+                        : '<div class="card-img-placeholder">🍽️</div>'}
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h3 class="card-title">${recipe.title}</h3>
+                            <span class="badge ${matchBadgeClass}">${recipe.match_percent}%</span>
+                        </div>
+                        <p class="card-text">${recipe.description ? recipe.description.substring(0, 80) : ''}</p>
+                        <div class="card-tags">
+                            <span class="badge badge-primary">⏱ ${recipe.total_time} мин</span>
+                            <span class="badge badge-success">${recipe.default_portions} порц.</span>
+                        </div>
+                        ${missingHtml}
+                    </div>
                 </div>
-                ${missingHtml}
-            </div>
-        </div>
-    </a>`;
-});
+            </a>`;
+        });
         resultsContainer.innerHTML = html;
     } catch (err) {
         console.error('Ошибка:', err);
-        resultsContainer.innerHTML = '<p class="text-center text-danger">Ошибка при поиске рецептов.</p>';
+        resultsContainer.innerHTML = '<div class="text-center text-danger">Ошибка при поиске рецептов.</div>';
     }
 }
 </script>

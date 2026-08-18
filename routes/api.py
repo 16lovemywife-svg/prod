@@ -89,36 +89,39 @@ def find_by_ingredients():
     except ValueError:
         return jsonify([])
 
-    if require_all:
-        subquery = db.session.query(RecipeIngredient.recipe_id).filter(
-            ~RecipeIngredient.product_id.in_(ids)
-        ).subquery()
-
-        recipe_ids = RecipeIngredient.query.filter(
-            RecipeIngredient.product_id.in_(ids)
-        ).filter(
-            ~RecipeIngredient.recipe_id.in_(subquery)
-        ).with_entities(RecipeIngredient.recipe_id).distinct().all()
-        recipe_ids = [r[0] for r in recipe_ids]
-    else:
-        recipe_ids = RecipeIngredient.query.filter(
-            RecipeIngredient.product_id.in_(ids)
-        ).with_entities(RecipeIngredient.recipe_id).distinct().all()
-        recipe_ids = [r[0] for r in recipe_ids]
+    # Получаем ID рецептов, содержащих хотя бы один из выбранных продуктов
+    recipe_ids = RecipeIngredient.query.filter(
+        RecipeIngredient.product_id.in_(ids)
+    ).with_entities(RecipeIngredient.recipe_id).distinct().all()
+    recipe_ids = [r[0] for r in recipe_ids]
 
     if not recipe_ids:
         return jsonify([])
 
-    recipes = Recipe.query.filter(Recipe.id.in_(recipe_ids)).order_by(Recipe.created_at.desc()).limit(20).all()
+    recipes = Recipe.query.filter(Recipe.id.in_(recipe_ids)).all()
 
     result = []
     for recipe in recipes:
-        data = recipe.to_dict()
-        # Получаем ингредиенты рецепта
         ingredients = RecipeIngredient.query.filter_by(recipe_id=recipe.id).all()
-        missing = [ing.product.name for ing in ingredients if ing.product_id not in ids]
-        data['missing_ingredients'] = missing
+        total_ingredients = len(ingredients)
+        matched_ingredients = sum(1 for ing in ingredients if ing.product_id in ids)
+
+        # Если включён фильтр "только полные совпадения" и рецепт не подходит, пропускаем
+        if require_all and matched_ingredients < total_ingredients:
+            continue
+
+        missing_ingredients = [ing.product.name for ing in ingredients if ing.product_id not in ids]
+        match_percent = round((matched_ingredients / total_ingredients) * 100) if total_ingredients > 0 else 0
+
+        data = recipe.to_dict()
+        data['missing_ingredients'] = missing_ingredients
+        data['match_percent'] = match_percent
+        data['matched_count'] = matched_ingredients
+        data['total_ingredients'] = total_ingredients
         result.append(data)
+
+    # Сортировка: сначала по проценту совпадения, затем по количеству совпавших, затем по названию
+    result.sort(key=lambda x: (-x['match_percent'], -x['matched_count'], x['title'].lower()))
 
     return jsonify(result)
 
