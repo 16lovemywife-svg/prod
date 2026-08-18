@@ -78,20 +78,39 @@ def replace_ingredient(recipe_id):
 
 @api_bp.route('/recipes/by-ingredients')
 def find_by_ingredients():
-    """Поиск рецептов по имеющимся ингредиентам (режим Холодильник)"""
     product_ids = request.args.getlist('product_ids[]')
+    require_all = request.args.get('require_all', '0') == '1'
+
     if not product_ids:
         return jsonify([])
 
-    # Ищем рецепты, содержащие хотя бы один из указанных продуктов
-    from sqlalchemy import and_
-    recipe_ids = RecipeIngredient.query.filter(
-        RecipeIngredient.product_id.in_([int(pid) for pid in product_ids])
-    ).with_entities(RecipeIngredient.recipe_id).distinct().all()
+    try:
+        ids = [int(pid) for pid in product_ids]
+    except ValueError:
+        return jsonify([])
 
-    recipe_ids = [r[0] for r in recipe_ids]
-    recipes = Recipe.query.filter(Recipe.id.in_(recipe_ids)).limit(20).all()
+    if require_all:
+        # Рецепты, у которых нет ни одного ингредиента вне выбранных
+        subquery = db.session.query(RecipeIngredient.recipe_id).filter(
+            ~RecipeIngredient.product_id.in_(ids)
+        ).subquery()
 
+        recipe_ids = RecipeIngredient.query.filter(
+            RecipeIngredient.product_id.in_(ids)
+        ).filter(
+            ~RecipeIngredient.recipe_id.in_(subquery)
+        ).with_entities(RecipeIngredient.recipe_id).distinct().all()
+        recipe_ids = [r[0] for r in recipe_ids]
+    else:
+        recipe_ids = RecipeIngredient.query.filter(
+            RecipeIngredient.product_id.in_(ids)
+        ).with_entities(RecipeIngredient.recipe_id).distinct().all()
+        recipe_ids = [r[0] for r in recipe_ids]
+
+    if not recipe_ids:
+        return jsonify([])
+
+    recipes = Recipe.query.filter(Recipe.id.in_(recipe_ids)).order_by(Recipe.created_at.desc()).limit(20).all()
     return jsonify([r.to_dict() for r in recipes])
 
 

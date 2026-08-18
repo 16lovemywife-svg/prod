@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Холодильник{% endblock %}
+
+{% block content %}
+<h1 style="color: var(--neon-blue);">🧊 Холодильник</h1>
+<p class="text-muted">Отметьте продукты, которые у вас есть, и мы подберём рецепты.</p>
+
+<!-- Блок добавления продукта -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="form-group">
+            <label>Добавить продукт</label>
+            <input type="text" id="fridgeProductInput" class="form-control" placeholder="Поиск продукта..." autocomplete="off">
+            <input type="hidden" id="fridgeProductId">
+            <button class="btn btn-primary mt-2" onclick="addFridgeItem()">➕ Добавить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Список выбранных продуктов -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h3>Мои продукты</h3>
+        <ul id="fridgeList" class="list-unstyled">
+            <!-- Динамически заполняется -->
+        </ul>
+    </div>
+</div>
+
+<div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" id="requireAllCheckbox">
+    <label class="form-check-label" for="requireAllCheckbox">
+        Показывать только рецепты, которые можно приготовить полностью из выбранных продуктов
+    </label>
+</div>
+
+<!-- Кнопка поиска -->
+<div class="text-center mb-4">
+    <button class="btn btn-primary" onclick="searchRecipes()">🔍 Найти рецепты</button>
+</div>
+
+<!-- Результаты -->
+<div id="fridgeResults" class="recipe-grid"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Хранилище выбранных продуктов
+let fridgeItems = [];
+
+// Загрузка из localStorage
+document.addEventListener('DOMContentLoaded', function() {
+    const saved = localStorage.getItem('fridge_items');
+    if (saved) {
+        fridgeItems = JSON.parse(saved);
+    }
+    renderFridgeList();
+
+    // Инициализация автодополнения
+    if (typeof Autocomplete !== 'undefined') {
+        new Autocomplete(document.getElementById('fridgeProductInput'), {
+            apiUrl: '/api/search-products',
+            onSelect: function(item) {
+                document.getElementById('fridgeProductId').value = item.id;
+                // При выборе сразу добавляем
+                addFridgeItem();
+            }
+        });
+    }
+});
+
+function saveFridgeItems() {
+    localStorage.setItem('fridge_items', JSON.stringify(fridgeItems));
+}
+
+function addFridgeItem() {
+    const id = document.getElementById('fridgeProductId').value;
+    const input = document.getElementById('fridgeProductInput');
+    const name = input.value.trim();
+
+    if (!id || !name) {
+        alert('Выберите продукт из списка');
+        return;
+    }
+
+    // Проверка на дубликат
+    if (fridgeItems.some(item => item.id === id)) {
+        alert('Этот продукт уже добавлен');
+        input.value = '';
+        document.getElementById('fridgeProductId').value = '';
+        return;
+    }
+
+    fridgeItems.push({ id: id, name: name });
+    saveFridgeItems();
+    renderFridgeList();
+    input.value = '';
+    document.getElementById('fridgeProductId').value = '';
+}
+
+function removeFridgeItem(id) {
+    fridgeItems = fridgeItems.filter(item => item.id !== id);
+    saveFridgeItems();
+    renderFridgeList();
+}
+
+function renderFridgeList() {
+    const list = document.getElementById('fridgeList');
+    if (!list) return;
+    list.innerHTML = '';
+    if (fridgeItems.length === 0) {
+        list.innerHTML = '<li class="text-muted">Пока нет продуктов</li>';
+        return;
+    }
+    fridgeItems.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'd-flex justify-content-between align-items-center py-2';
+        li.style.borderBottom = '1px solid var(--border-color)';
+        li.innerHTML = `
+            <span>${item.name}</span>
+            <button class="btn btn-sm btn-danger" onclick="removeFridgeItem('${item.id}')">✕</button>
+        `;
+        list.appendChild(li);
+    });
+}
+
+async function searchRecipes() {
+    const resultsContainer = document.getElementById('fridgeResults');
+    if (!fridgeItems.length) {
+        resultsContainer.innerHTML = '<p class="text-center text-muted">Добавьте хотя бы один продукт.</p>';
+        return;
+    }
+
+    if (document.getElementById('requireAllCheckbox').checked) {
+    params.append('require_all', '1');
+    }
+
+    // Собираем параметры
+    const params = new URLSearchParams();
+    fridgeItems.forEach(item => {
+        params.append('product_ids[]', item.id);
+    });
+
+    try {
+        const response = await fetch(`/api/recipes/by-ingredients?${params.toString()}`);
+        const recipes = await response.json();
+
+        if (!recipes.length) {
+            resultsContainer.innerHTML = '<p class="text-center text-muted">Рецептов не найдено.</p>';
+            return;
+        }
+
+        // Отображаем карточки рецептов
+        let html = '';
+        recipes.forEach(recipe => {
+            html += `
+            <a href="/recipes/${recipe.id}" class="recipe-card-link">
+                <div class="card">
+                    ${recipe.image
+                        ? `<img src="/static/${recipe.image}" alt="${recipe.title}" class="card-img">`
+                        : '<div class="card-img-placeholder">🍽️</div>'}
+                    <div class="card-body">
+                        <h3 class="card-title">${recipe.title}</h3>
+                        <p class="card-text">${recipe.description ? recipe.description.substring(0, 80) : ''}</p>
+                        <div class="card-tags">
+                            <span class="badge badge-primary">⏱ ${recipe.total_time} мин</span>
+                            <span class="badge badge-success">${recipe.default_portions} порц.</span>
+                        </div>
+                    </div>
+                </div>
+            </a>`;
+        });
+        resultsContainer.innerHTML = html;
+    } catch (err) {
+        console.error('Ошибка:', err);
+        resultsContainer.innerHTML = '<p class="text-center text-danger">Ошибка при поиске рецептов.</p>';
+    }
+}
+</script>
+{% endblock %}
