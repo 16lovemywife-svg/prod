@@ -66,6 +66,33 @@ def diary():
             recommended_intake = tdee + burned_calories
 
     net_balance = (total_calories - recommended_intake) if recommended_intake is not None else None
+    # Собираем последние использованные позиции (до 5 уникальных)
+    recent_entries = []
+    seen = set()
+    recent_raw = MealEntry.query.order_by(MealEntry.id.desc()).limit(100).all()
+    for entry in recent_raw:
+        key = (entry.entry_type, entry.recipe_id or entry.product_id)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        if entry.entry_type == 'recipe' and entry.recipe:
+            recent_entries.append({
+                'type': 'recipe',
+                'id': entry.recipe.id,
+                'name': entry.recipe.title,
+                'quantity': entry.quantity if entry.quantity else 100
+            })
+        elif entry.entry_type == 'product' and entry.product:
+            recent_entries.append({
+                'type': 'product',
+                'id': entry.product.id,
+                'name': entry.product.name,
+                'quantity': entry.quantity if entry.quantity else 100
+            })
+
+        if len(recent_entries) >= 5:
+            break
 
     return render_template(
         'diary.html',
@@ -75,6 +102,7 @@ def diary():
         now=datetime.now(),
         meals=meals,
         goal=goal,
+        recent_entries=recent_entries,
         totals={
             'calories': total_calories,
             'proteins': total_proteins,

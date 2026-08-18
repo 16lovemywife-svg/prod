@@ -282,6 +282,23 @@
             <label>Продукт</label>
             <input type="text" id="diary-product-input" class="form-control" placeholder="Поиск продукта..." autocomplete="off">
         </div>
+        {% if recent_entries %}
+        <div class="form-group">
+            <label>Недавние</label>
+            <div id="recentEntries" class="d-flex flex-wrap gap-2">
+                {% for recent in recent_entries %}
+                    <button type="button" class="btn btn-sm btn-outline recent-item"
+                            data-type="{{ recent.type }}"
+                            data-id="{{ recent.id }}"
+                            data-name="{{ recent.name }}"
+                            data-quantity="{{ recent.quantity }}"
+                            onclick="selectRecent(this)">
+                        {% if recent.type == 'recipe' %}🍽️{% else %}🥦{% endif %} {{ recent.name }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
         <div class="form-group">
             <label>Вес (г)</label>
             <input type="number" name="quantity" value="100" step="1" min="1" class="form-control">
@@ -497,6 +514,33 @@ function showCopyMealModal(mealId, mealType, time) {
 
 function hideCopyMealModal() {
     document.getElementById('copyMealModal').style.display = 'none';
+}
+
+function selectRecent(btn) {
+    const type = btn.dataset.type;
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    const quantity = btn.dataset.quantity || 100;
+
+    // Заполняем скрытые поля
+    document.getElementById('entryTypeInput').value = type;
+    document.getElementById('hiddenRecipeId').value = type === 'recipe' ? id : '';
+    document.getElementById('hiddenProductId').value = type === 'product' ? id : '';
+    document.querySelector('input[name="quantity"]').value = quantity;
+
+    // Отображаем выбранное в автодополнении
+    if (type === 'recipe') {
+        document.getElementById('diary-recipe-input').value = name;
+        document.getElementById('recipeSelectGroup').style.display = 'block';
+        document.getElementById('productSelectGroup').style.display = 'none';
+    } else {
+        document.getElementById('diary-product-input').value = name;
+        document.getElementById('productSelectGroup').style.display = 'block';
+        document.getElementById('recipeSelectGroup').style.display = 'none';
+    }
+
+    // Отправляем форму
+    document.getElementById('addEntryForm').submit();
 }
 </script>
 {% endblock %}
