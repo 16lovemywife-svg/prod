@@ -99,6 +99,7 @@
 
     <!-- Правая колонка: итоги и цели -->
     <div class="diary-summary">
+        <!-- Карточка 1: Итоги за день -->
         <div class="card">
             <div class="card-body">
                 <h3>📊 Итоги за {{ date.strftime('%d.%m.%Y') }}</h3>
@@ -109,7 +110,7 @@
                         <circle cx="75" cy="75" r="65" fill="none" stroke="var(--border-color)" stroke-width="12"/>
                         <circle cx="75" cy="75" r="65" fill="none" stroke="var(--neon-orange)" stroke-width="12"
                                 stroke-dasharray="408.4" stroke-dashoffset="{{ 408.4 * (1 - totals.calories / goal.calories) if totals.calories <= goal.calories else 0 }}"
-                                stroke-linecap="round" transform="rotate(-90 75 75)" id="calorie-ring-fill"/>
+                                stroke-linecap="round" transform="rotate(-90 75 75)"/>
                         <text x="75" y="75" text-anchor="middle" dy="0.3em" fill="var(--text-primary)" font-size="28" font-weight="bold">
                             {{ totals.calories|round(0) }}
                         </text>
@@ -142,31 +143,91 @@
                     </div>
                 </div>
 
+                <!-- Рекомендуемое потребление -->
+                {% if totals.recommended %}
+                <div class="mt-3 p-2" style="background: rgba(0,212,255,0.05); border-radius: 8px;">
+                    <strong>🎯 Рекомендуемое потребление:</strong> {{ totals.recommended|round(0) }} ккал
+                </div>
+                {% endif %}
+
                 <!-- Кнопка настройки целей -->
                 <div class="mt-3">
-                    <button class="btn btn-sm btn-outline" onclick="toggleSection('goal-settings', this)">🎯 Настроить цели</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="toggleGoals()">🎯 Настроить цели</button>
                     <div id="goal-settings" class="section-content mt-2" style="display:none;">
                         <form method="POST" action="{{ url_for('diary.update_goals') }}">
                             <div class="form-group">
-                                <label>Ккал</label>
-                                <input type="number" name="calories" value="{{ goal.calories }}" class="form-control form-control-sm" style="width:100px;">
+                                <label>Тип цели</label>
+                                <select name="goal_type" id="goal-type-select" class="form-control form-control-sm" style="width:200px;">
+                                    <option value="lose" {% if goal.goal_type == 'lose' %}selected{% endif %}>Похудение</option>
+                                    <option value="maintain" {% if goal.goal_type == 'maintain' %}selected{% endif %}>Поддержание веса</option>
+                                    <option value="gain" {% if goal.goal_type == 'gain' %}selected{% endif %}>Набор массы</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Калории</label>
+                                <input type="number" name="calories" id="goal-calories" value="{{ goal.calories }}" step="any" class="form-control form-control-sm" style="width:120px;">
                             </div>
                             <div class="form-group">
                                 <label>Белки (г)</label>
-                                <input type="number" name="proteins" value="{{ goal.proteins }}" class="form-control form-control-sm" style="width:100px;">
+                                <input type="number" name="proteins" id="goal-proteins" value="{{ goal.proteins }}" step="0.1" class="form-control form-control-sm" style="width:120px;">
                             </div>
                             <div class="form-group">
                                 <label>Жиры (г)</label>
-                                <input type="number" name="fats" value="{{ goal.fats }}" class="form-control form-control-sm" style="width:100px;">
+                                <input type="number" name="fats" id="goal-fats" value="{{ goal.fats }}" step="0.1" class="form-control form-control-sm" style="width:120px;">
                             </div>
                             <div class="form-group">
                                 <label>Углеводы (г)</label>
-                                <input type="number" name="carbs" value="{{ goal.carbs }}" class="form-control form-control-sm" style="width:100px;">
+                                <input type="number" name="carbs" id="goal-carbs" value="{{ goal.carbs }}" step="0.1" class="form-control form-control-sm" style="width:120px;">
                             </div>
                             <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+                            <button type="button" class="btn btn-sm btn-outline mt-2" id="showGoalCalcBtn">✨ Рассчитать по профилю</button>
                         </form>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Карточка 2: Энергетический баланс -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <h4>⚖️ Энергетический баланс</h4>
+                <div class="balance-row">
+                    <span class="balance-label">Потреблено</span>
+                    <span class="balance-value">{{ totals.calories|round(1) }} ккал</span>
+                </div>
+                <div class="balance-row">
+                    <span class="balance-label">Сожжено тренировками</span>
+                    <span class="balance-value">{{ totals.burned|round(1) }} ккал</span>
+                </div>
+                {% if totals.tdee %}
+                <div class="balance-row">
+                    <span class="balance-label">Базовый расход (TDEE)</span>
+                    <span class="balance-value">{{ totals.tdee|round(1) }} ккал</span>
+                </div>
+                <div class="balance-row">
+                    <span class="balance-label">Рекомендуемое потребление</span>
+                    <span class="balance-value">{{ totals.recommended|round(1) }} ккал</span>
+                </div>
+                <div class="balance-row">
+                    <span class="balance-label">Баланс</span>
+                    <span class="balance-value" style="font-weight:bold; color: {% if totals.balance > 0 %}var(--neon-orange){% else %}var(--neon-green){% endif %};">
+                        {{ totals.balance|round(1) }} ккал
+                    </span>
+                </div>
+                <p class="small text-muted mt-2">
+                    {% if totals.balance > 0 %}
+                        🔺 Профицит: вы съели больше рекомендуемого.
+                    {% elif totals.balance < 0 %}
+                        🔻 Дефицит: вы съели меньше рекомендуемого.
+                    {% else %}
+                        ⚖️ Идеальный баланс.
+                    {% endif %}
+                </p>
+                {% else %}
+                <p class="small text-muted mt-2">
+                    <a href="{{ url_for('profile.profile') }}">Заполните профиль</a>, чтобы увидеть базовый расход и рекомендации.
+                </p>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -226,11 +287,26 @@
         <button type="button" class="btn btn-outline" onclick="hideAddEntryModal()">Отмена</button>
     </form>
 </div>
+
+<!-- Модальное окно автоматического расчёта целей -->
+<div id="goalCalcModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--bg-card); padding:2rem; border-radius:1rem; z-index:1000; border:1px solid var(--border-color);">
+    <h4>Рассчитать цели по профилю</h4>
+    <div class="form-group">
+        <label>Цель</label>
+        <select id="goalTypeSelect" class="form-control">
+            <option value="lose">Похудение</option>
+            <option value="maintain" selected>Поддержание веса</option>
+            <option value="gain">Набор массы</option>
+        </select>
+    </div>
+    <button class="btn btn-primary" id="calcGoalsBtn">Рассчитать</button>
+    <button class="btn btn-outline" id="closeGoalCalcModal">Отмена</button>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// ===== Функции для модальных окон =====
+// ===== Функции модальных окон =====
 function showAddMealModal() { document.getElementById('addMealModal').style.display = 'block'; }
 function hideAddMealModal() { document.getElementById('addMealModal').style.display = 'none'; }
 
@@ -246,7 +322,14 @@ function showAddEntryModal(mealId) {
 }
 function hideAddEntryModal() { document.getElementById('addEntryModal').style.display = 'none'; }
 
-// ===== Логика автодополнения и переключения типа =====
+function showGoalCalcModal() {
+    const select = document.getElementById('goalTypeSelect');
+    if (select) select.value = 'maintain';
+    document.getElementById('goalCalcModal').style.display = 'block';
+}
+function hideGoalCalcModal() { document.getElementById('goalCalcModal').style.display = 'none'; }
+
+// ===== Переключение типа записи =====
 function updateEntryForm() {
     const type = document.getElementById('entryTypeSelect').value;
     document.getElementById('entryTypeInput').value = type;
@@ -254,6 +337,7 @@ function updateEntryForm() {
     document.getElementById('productSelectGroup').style.display = type === 'product' ? 'block' : 'none';
 }
 
+// ===== Проверка перед отправкой формы позиции =====
 function prepareEntrySubmit() {
     const type = document.getElementById('entryTypeInput').value;
     if (type === 'recipe' && !document.getElementById('hiddenRecipeId').value) {
@@ -267,8 +351,78 @@ function prepareEntrySubmit() {
     return true;
 }
 
-// ===== Инициализация Autocomplete =====
+// ===== Универсальная функция сворачивания =====
+function toggleSection(id, btn) {
+    const el = document.getElementById(id);
+    if (el.style.display === 'none' || el.style.display === '') {
+        el.style.display = 'block';
+        btn.innerHTML = btn.innerHTML.replace('▶', '▼').replace('Показать', 'Скрыть');
+    } else {
+        el.style.display = 'none';
+        btn.innerHTML = btn.innerHTML.replace('▼', '▶').replace('Скрыть', 'Показать');
+    }
+}
+
+// ===== Функция для инлайн-кнопки настройки целей =====
+function toggleGoals() {
+    const settings = document.getElementById('goal-settings');
+    if (settings) {
+        settings.style.display = (settings.style.display === 'none' || settings.style.display === '') ? 'block' : 'none';
+    }
+}
+
+// ===== Автоматический расчёт целей =====
+function calculateGoals() {
+    const select = document.getElementById('goalTypeSelect');
+    if (!select) return;
+    const goalType = select.value;
+    const btn = document.getElementById('calcGoalsBtn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Считаем...';
+
+    fetch('/diary/calculate-goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal_type: goalType })
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+
+        if (data.error) {
+            if (data.error === 'profile_not_found') {
+                alert('Сначала заполните профиль в разделе «Профиль».');
+            } else if (data.error === 'invalid_profile') {
+                alert('Проверьте данные профиля: вес, рост, возраст должны быть больше нуля.');
+            }
+            return;
+        }
+
+        document.getElementById('goal-calories').value = data.calories;
+        document.getElementById('goal-proteins').value = data.proteins;
+        document.getElementById('goal-fats').value = data.fats;
+        document.getElementById('goal-carbs').value = data.carbs;
+
+        const goalSettings = document.getElementById('goal-settings');
+        if (goalSettings) {
+            goalSettings.style.display = 'block';
+        }
+
+        hideGoalCalcModal();
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        console.error('Ошибка:', err);
+        alert('Произошла ошибка при расчёте.');
+    });
+}
+
+// ===== Инициализация после загрузки DOM =====
 document.addEventListener('DOMContentLoaded', function() {
+    // Autocomplete для рецептов
     if (typeof Autocomplete !== 'undefined') {
         new Autocomplete(document.getElementById('diary-recipe-input'), {
             apiUrl: '/api/search-recipes',
@@ -285,18 +439,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
 
-// ===== Универсальная функция сворачивания =====
-function toggleSection(id, btn) {
-    const el = document.getElementById(id);
-    if (el.style.display === 'none' || el.style.display === '') {
-        el.style.display = 'block';
-        btn.innerHTML = btn.innerHTML.replace('▶', '▼').replace('Показать', 'Скрыть');
-    } else {
-        el.style.display = 'none';
-        btn.innerHTML = btn.innerHTML.replace('▼', '▶').replace('Скрыть', 'Показать');
+    // Кнопки для расчёта целей
+    const showBtn = document.getElementById('showGoalCalcBtn');
+    if (showBtn) {
+        showBtn.addEventListener('click', showGoalCalcModal);
     }
-}
+    const closeBtn = document.getElementById('closeGoalCalcModal');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', hideGoalCalcModal);
+    }
+    const calcBtn = document.getElementById('calcGoalsBtn');
+    if (calcBtn) {
+        calcBtn.addEventListener('click', calculateGoals);
+    }
+});
 </script>
 {% endblock %}

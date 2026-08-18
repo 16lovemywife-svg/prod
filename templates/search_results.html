@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Поиск: {{ query }}{% endblock %}
+
+{% block content %}
+<h1 style="color: var(--neon-blue);">🔍 Поиск: "{{ query }}"</h1>
+
+<!-- Переключатель типа -->
+<div class="search-tabs mb-4">
+    <a href="{{ url_for('main.search', q=query, type='all') }}" class="search-tab {% if search_type == 'all' %}active{% endif %}">
+        Все ({{ total_recipes + total_products }})
+    </a>
+    <a href="{{ url_for('main.search', q=query, type='recipes') }}" class="search-tab {% if search_type == 'recipes' %}active{% endif %}">
+        Рецепты ({{ total_recipes }})
+    </a>
+    <a href="{{ url_for('main.search', q=query, type='products') }}" class="search-tab {% if search_type == 'products' %}active{% endif %}">
+        Продукты ({{ total_products }})
+    </a>
+</div>
+
+{% if not query %}
+    <p class="text-center mt-4">Введите поисковый запрос.</p>
+{% elif not recipes and not products %}
+    <p class="text-center mt-4">Ничего не найдено.</p>
+{% else %}
+    {% if recipes and search_type in ('all', 'recipes') %}
+        <div class="mb-4">
+            <h3>📋 Рецепты</h3>
+            <div class="recipe-grid">
+                {% for recipe in recipes %}
+                <a href="{{ url_for('recipes.view_recipe', recipe_id=recipe.id) }}" class="recipe-card-link">
+                    <div class="card">
+                        {% if recipe.image %}
+                        <img src="{{ url_for('static', filename=recipe.image) }}" alt="{{ recipe.title }}" class="card-img">
+                        {% else %}
+                        <div class="card-img-placeholder">🍽️</div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h3 class="card-title" title="{{ recipe.title }}">{{ recipe.title }}</h3>
+                            <p class="card-text">{{ recipe.description[:80] if recipe.description else '' }}</p>
+                            <div class="card-tags">
+                                <span class="badge badge-primary">⏱ {{ recipe.total_time }} мин</span>
+                                <span class="badge badge-success">{{ recipe.default_portions }} порц.</span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if products and search_type in ('all', 'products') %}
+        <div class="mb-4">
+            <h3>📦 Продукты</h3>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Категория</th>
+                            <th>Ккал</th>
+                            <th>Б</th>
+                            <th>Ж</th>
+                            <th>У</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr>
+                            <td>{{ product.name }}</td>
+                            <td>{{ product.category or '—' }}</td>
+                            <td>{{ product.calories }}</td>
+                            <td>{{ product.proteins }}</td>
+                            <td>{{ product.fats }}</td>
+                            <td>{{ product.carbs }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Пагинация (упрощённая) -->
+    {% set total_items = total_recipes if search_type == 'recipes' else total_products if search_type == 'products' else total_recipes + total_products %}
+    {% set total_pages = (total_items // per_page) + (1 if total_items % per_page else 0) %}
+    {% if total_pages > 1 %}
+    <nav class="pagination justify-content-center mt-4">
+        {% for p in range(1, total_pages + 1) %}
+        <a href="{{ url_for('main.search', q=query, type=search_type, page=p) }}" class="pagination__btn {% if p == page %}pagination__btn--active{% endif %}">{{ p }}</a>
+        {% endfor %}
+    </nav>
+    {% endif %}
+{% endif %}
+{% endblock %}

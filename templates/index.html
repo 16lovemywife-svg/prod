@@ -8,11 +8,16 @@
     <h1>Найди идеальный рецепт</h1>
     <p>Храните рецепты, рассчитывайте КБЖУ, планируйте меню — всё в одном приложении</p>
 
-    <!-- Поиск -->
-    <form action="{{ url_for('main.index') }}" method="GET" class="search-box">
-        <input type="text" name="q" placeholder="Поиск рецептов..." value="{{ query }}">
-        <button type="submit">🔍</button>
-    </form>
+    <!-- Поиск с автодополнением -->
+    <div class="search-box">
+        <form action="{{ url_for('main.search') }}" method="GET" class="search-form">
+            <input type="hidden" name="type" value="all">
+            <input type="text" name="q" id="mainSearchInput" placeholder="Поиск рецептов и продуктов..."
+                   value="{{ query }}" autocomplete="off" class="search-input">
+            <button type="submit" class="search-btn">🔍</button>
+        </form>
+        <div id="mainSearchSuggestions" class="autocomplete-dropdown" style="display:none;"></div>
+    </div>
 </div>
 
 <!-- Категории -->
@@ -26,7 +31,7 @@
 
 <!-- Фильтры -->
 <div class="d-flex gap-2 flex-wrap mb-3 justify-content-center">
-    <a href="{{ url_for('main.index', q=query, sort=sort_by, difficulty='') }}" 
+    <a href="{{ url_for('main.index', q=query, sort=sort_by, difficulty='') }}"
        class="badge {% if not difficulty_filter %}badge-primary{% endif %}">
         Все
     </a>
@@ -164,4 +169,63 @@
     </a>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const input = document.getElementById('mainSearchInput');
+    const dropdown = document.getElementById('mainSearchSuggestions');
+    let timeout;
+
+    if (!input || !dropdown) return;
+
+    input.addEventListener('input', function() {
+        clearTimeout(timeout);
+        const query = this.value.trim();
+        if (query.length < 2) {
+            dropdown.style.display = 'none';
+            return;
+        }
+        timeout = setTimeout(() => {
+            // Загружаем и рецепты, и продукты
+            fetch(`/api/search-recipes?q=${encodeURIComponent(query)}`)
+                .then(r => r.json())
+                .then(recipes => {
+                    fetch(`/api/search-products?q=${encodeURIComponent(query)}`)
+                        .then(r => r.json())
+                        .then(products => render(recipes, products));
+                });
+        }, 300);
+    });
+
+    function render(recipes, products) {
+        let html = '';
+        if (recipes.length) {
+            html += '<div class="suggestion-group">Рецепты</div>';
+            recipes.slice(0, 5).forEach(r => {
+                html += `<a href="/recipes/${r.id}" class="suggestion-item">${r.title}</a>`;
+            });
+        }
+        if (products.length) {
+            html += '<div class="suggestion-group">Продукты</div>';
+            products.slice(0, 5).forEach(p => {
+                html += `<a href="/products/${p.id}/edit" class="suggestion-item">${p.name}</a>`;
+            });
+        }
+        if (!html) {
+            dropdown.style.display = 'none';
+            return;
+        }
+        dropdown.innerHTML = html;
+        dropdown.style.display = 'block';
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.search-box')) {
+            dropdown.style.display = 'none';
+        }
+    });
+})();
+</script>
 {% endblock %}
